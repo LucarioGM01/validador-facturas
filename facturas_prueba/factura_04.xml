@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<cfdi:Comprobante xmlns:cfdi="http://www.sat.gob.mx/cfd/4"
+    xmlns:tfd="http://www.sat.gob.mx/TimbreFiscalDigital"
+    Version="4.0" Fecha="2026-11-05T11:00:00" Moneda="MXN"
+    SubTotal="900.00" Total="1044.00" TipoDeComprobante="I">
+  <cfdi:Emisor Rfc="FFI010101GH4" Nombre="FERRETERIA FICTICIA SA DE CV" RegimenFiscal="601"/>
+  <cfdi:Receptor Rfc="TEC000101AA1" Nombre="INSTITUTO TECNOLOGICO DE PRUEBA" UsoCFDI="G03"/>
+  <cfdi:Conceptos>
+    <cfdi:Concepto Descripcion="Juego de desarmadores" Cantidad="5" ValorUnitario="180.00" Importe="900.00"/>
+  </cfdi:Conceptos>
+  <cfdi:Impuestos TotalImpuestosTrasladados="144.00">
+    <cfdi:Traslados>
+      <cfdi:Traslado Base="900.00" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.160000" Importe="144.00"/>
+    </cfdi:Traslados>
+  </cfdi:Impuestos>
+  <cfdi:Complemento>
+    <tfd:TimbreFiscalDigital Version="1.1" UUID="00000000-0000-4000-8000-000000000004" FechaTimbrado="2026-11-05T11:01:00"/>
+  </cfdi:Complemento>
+</cfdi:Comprobante>

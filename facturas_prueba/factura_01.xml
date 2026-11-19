@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<cfdi:Comprobante xmlns:cfdi="http://www.sat.gob.mx/cfd/4"
+    xmlns:tfd="http://www.sat.gob.mx/TimbreFiscalDigital"
+    Version="4.0" Fecha="2026-11-03T10:15:00" Moneda="MXN"
+    SubTotal="1250.00" Total="1450.00" TipoDeComprobante="I">
+  <cfdi:Emisor Rfc="PAP010101AB1" Nombre="PAPELERIA EJEMPLO SA DE CV" RegimenFiscal="601"/>
+  <cfdi:Receptor Rfc="TEC000101AA1" Nombre="INSTITUTO TECNOLOGICO DE PRUEBA" UsoCFDI="G03"/>
+  <cfdi:Conceptos>
+    <cfdi:Concepto Descripcion="Resma de papel carta" Cantidad="10" ValorUnitario="125.00" Importe="1250.00"/>
+  </cfdi:Conceptos>
+  <cfdi:Impuestos TotalImpuestosTrasladados="200.00">
+    <cfdi:Traslados>
+      <cfdi:Traslado Base="1250.00" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.160000" Importe="200.00"/>
+    </cfdi:Traslados>
+  </cfdi:Impuestos>
+  <cfdi:Complemento>
+    <tfd:TimbreFiscalDigital Version="1.1" UUID="00000000-0000-4000-8000-000000000001" FechaTimbrado="2026-11-03T10:16:00"/>
+  </cfdi:Complemento>
+</cfdi:Comprobante>

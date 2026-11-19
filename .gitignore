@@ -1,0 +1,25 @@
+# Archivos y carpetas que git NO debe subir a GitHub.
+
+# --- Secretos: token de Telegram, chat_id y contraseñas de prueba ---
+# ¡NUNCA se suben! En Streamlit Cloud se pegan en "Advanced settings → Secrets".
+.streamlit/secrets.toml
+
+# --- Base de datos SQLite local (el programa la vuelve a crear sola) ---
+*.db
+*.sqlite3
+
+# --- Archivos temporales que Python crea automáticamente ---
+__pycache__/
+*.pyc
+
+# --- Entornos virtuales (por si llegas a usar uno) ---
+.venv/
+venv/
+
+# --- Configuración local de Claude (solo para abrir la app desde Claude) ---
+.claude/
+
+# --- Archivos del sistema (Windows / OneDrive / Mac) ---
+desktop.ini
+Thumbs.db
+.DS_Store

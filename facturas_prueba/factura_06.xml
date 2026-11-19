@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<cfdi:Comprobante xmlns:cfdi="http://www.sat.gob.mx/cfd/4"
+    xmlns:tfd="http://www.sat.gob.mx/TimbreFiscalDigital"
+    Version="4.0" Fecha="2026-11-06T16:45:00" Moneda="MXN"
+    SubTotal="760.00" Total="881.60" TipoDeComprobante="I">
+  <cfdi:Emisor Rfc="PAP010101AB1" Nombre="PAPELERIA EJEMPLO SA DE CV" RegimenFiscal="601"/>
+  <cfdi:Receptor Rfc="TEC000101AA1" Nombre="INSTITUTO TECNOLOGICO DE PRUEBA" UsoCFDI="G03"/>
+  <cfdi:Conceptos>
+    <cfdi:Concepto Descripcion="Caja de folders tamaño carta" Cantidad="8" ValorUnitario="95.00" Importe="760.00"/>
+  </cfdi:Conceptos>
+  <cfdi:Impuestos TotalImpuestosTrasladados="121.60">
+    <cfdi:Traslados>
+      <cfdi:Traslado Base="760.00" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.160000" Importe="121.60"/>
+    </cfdi:Traslados>
+  </cfdi:Impuestos>
+  <cfdi:Complemento>
+    <tfd:TimbreFiscalDigital Version="1.1" UUID="00000000-0000-4000-8000-000000000006" FechaTimbrado="2026-11-06T16:46:00"/>
+  </cfdi:Complemento>
+</cfdi:Comprobante>

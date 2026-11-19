@@ -1,0 +1,43 @@
+# Configuración de Streamlit: colores de la marca Soluciones Digitales.
+#
+# Diseño: área principal clara (marfil) para que se lea fácil y se vean bien
+# los logos, y barra lateral carbón con detalles cobre (los colores de la marca).
+
+[theme]
+base = "light"
+primaryColor = "#8A5434"             # cobre oscuro: botones principales (el texto blanco se lee bien)
+backgroundColor = "#F7F3EE"          # marfil: fondo de la página
+secondaryBackgroundColor = "#EFE6DC" # marfil más oscuro: campos y cajas
+textColor = "#2B2E33"                # carbón: texto
+linkColor = "#8A5434"
+borderColor = "#E3D5C6"
+font = "Open Sans:https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap"
+headingFont = "Georgia, serif"       # títulos con fuente serif elegante
+baseRadius = "12px"                  # esquinas redondeadas
+showWidgetBorder = true
+dataframeHeaderBackgroundColor = "#F3E9DE"
+
+# Colores de apoyo: cada opción y cada estado tiene el suyo.
+blueColor = "#2F5DA8"                # azul del Tecnológico
+greenColor = "#2E8B57"               # vigente
+redColor = "#C0392B"                 # cancelada
+orangeColor = "#D9822B"              # receptor incorrecto
+yellowColor = "#E8B04B"
+violetColor = "#6B4FA0"
+
+[theme.sidebar]
+backgroundColor = "#2B2E33"          # carbón
+secondaryBackgroundColor = "#363A40"
+textColor = "#F5F1EC"                # marfil
+primaryColor = "#CD9472"             # cobre
+linkColor = "#E3B08F"                # cobre claro
+borderColor = "#4A4F57"
+
+[server]
+maxUploadSize = 5                    # MB por archivo: una factura XML pesa unos KB
+
+[client]
+toolbarMode = "minimal"              # oculta el menú de desarrollador
+
+[browser]
+gatherUsageStats = false             # no mandar estadísticas a Streamlit

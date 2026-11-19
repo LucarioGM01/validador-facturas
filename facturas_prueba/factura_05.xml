@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<cfdi:Comprobante xmlns:cfdi="http://www.sat.gob.mx/cfd/4"
+    xmlns:tfd="http://www.sat.gob.mx/TimbreFiscalDigital"
+    Version="4.0" Fecha="2026-11-06T13:20:00" Moneda="MXN"
+    SubTotal="1500.00" Total="1740.00" TipoDeComprobante="I">
+  <cfdi:Emisor Rfc="CMU010101JK5" Nombre="CAFETERIA MUESTRA SA DE CV" RegimenFiscal="601"/>
+  <cfdi:Receptor Rfc="ITM000101BB2" Nombre="INSTITUTO TECNOLOGICO MODELO" UsoCFDI="G03"/>
+  <cfdi:Conceptos>
+    <cfdi:Concepto Descripcion="Servicio de café para reunión" Cantidad="1" ValorUnitario="1500.00" Importe="1500.00"/>
+  </cfdi:Conceptos>
+  <cfdi:Impuestos TotalImpuestosTrasladados="240.00">
+    <cfdi:Traslados>
+      <cfdi:Traslado Base="1500.00" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.160000" Importe="240.00"/>
+    </cfdi:Traslados>
+  </cfdi:Impuestos>
+  <cfdi:Complemento>
+    <tfd:TimbreFiscalDigital Version="1.1" UUID="00000000-0000-4000-8000-000000000005" FechaTimbrado="2026-11-06T13:21:00"/>
+  </cfdi:Complemento>
+</cfdi:Comprobante>

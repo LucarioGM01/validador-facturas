@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<cfdi:Comprobante xmlns:cfdi="http://www.sat.gob.mx/cfd/4"
+    xmlns:tfd="http://www.sat.gob.mx/TimbreFiscalDigital"
+    Version="4.0" Fecha="2026-11-10T10:05:00" Moneda="MXN"
+    SubTotal="1950.00" Total="2262.00" TipoDeComprobante="I">
+  <cfdi:Emisor Rfc="IPR010101NP7" Nombre="IMPRENTA PRUEBA SA DE CV" RegimenFiscal="601"/>
+  <cfdi:Receptor Rfc="XYZ000101ZZ9" Nombre="EMPRESA AJENA DE PRUEBA SA DE CV" UsoCFDI="G03"/>
+  <cfdi:Conceptos>
+    <cfdi:Concepto Descripcion="Impresión de lona publicitaria" Cantidad="3" ValorUnitario="650.00" Importe="1950.00"/>
+  </cfdi:Conceptos>
+  <cfdi:Impuestos TotalImpuestosTrasladados="312.00">
+    <cfdi:Traslados>
+      <cfdi:Traslado Base="1950.00" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.160000" Importe="312.00"/>
+    </cfdi:Traslados>
+  </cfdi:Impuestos>
+  <cfdi:Complemento>
+    <tfd:TimbreFiscalDigital Version="1.1" UUID="00000000-0000-4000-8000-000000000008" FechaTimbrado="2026-11-10T10:06:00"/>
+  </cfdi:Complemento>
+</cfdi:Comprobante>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<cfdi:Comprobante xmlns:cfdi="http://www.sat.gob.mx/cfd/4"
+    xmlns:tfd="http://www.sat.gob.mx/TimbreFiscalDigital"
+    Version="4.0" Fecha="2026-11-11T12:00:00" Moneda="MXN"
+    SubTotal="1020.00" Total="1183.20" TipoDeComprobante="I">
+  <cfdi:Emisor Rfc="LDE010101EF3" Nombre="LIMPIEZA DEMO SA DE CV" RegimenFiscal="601"/>
+  <cfdi:Receptor Rfc="ITM000101BB2" Nombre="INSTITUTO TECNOLOGICO MODELO" UsoCFDI="G03"/>
+  <cfdi:Conceptos>
+    <cfdi:Concepto Descripcion="Paquete de productos de limpieza" Cantidad="12" ValorUnitario="85.00" Importe="1020.00"/>
+  </cfdi:Conceptos>
+  <cfdi:Impuestos TotalImpuestosTrasladados="163.20">
+    <cfdi:Traslados>
+      <cfdi:Traslado Base="1020.00" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.160000" Importe="163.20"/>
+    </cfdi:Traslados>
+  </cfdi:Impuestos>
+  <cfdi:Complemento>
+    <tfd:TimbreFiscalDigital Version="1.1" UUID="00000000-0000-4000-8000-000000000009" FechaTimbrado="2026-11-11T12:01:00"/>
+  </cfdi:Complemento>
+</cfdi:Comprobante>

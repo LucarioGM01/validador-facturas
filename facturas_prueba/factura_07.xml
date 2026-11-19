@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<cfdi:Comprobante xmlns:cfdi="http://www.sat.gob.mx/cfd/4"
+    xmlns:tfd="http://www.sat.gob.mx/TimbreFiscalDigital"
+    Version="4.0" Fecha="2026-11-09T08:50:00" Moneda="MXN"
+    SubTotal="4200.00" Total="4872.00" TipoDeComprobante="I">
+  <cfdi:Emisor Rfc="TDE010101LM6" Nombre="TRANSPORTES DEMO SA DE CV" RegimenFiscal="601"/>
+  <cfdi:Receptor Rfc="TEC000101AA1" Nombre="INSTITUTO TECNOLOGICO DE PRUEBA" UsoCFDI="G03"/>
+  <cfdi:Conceptos>
+    <cfdi:Concepto Descripcion="Flete de mobiliario" Cantidad="1" ValorUnitario="4200.00" Importe="4200.00"/>
+  </cfdi:Conceptos>
+  <cfdi:Impuestos TotalImpuestosTrasladados="672.00">
+    <cfdi:Traslados>
+      <cfdi:Traslado Base="4200.00" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.160000" Importe="672.00"/>
+    </cfdi:Traslados>
+  </cfdi:Impuestos>
+  <cfdi:Complemento>
+    <tfd:TimbreFiscalDigital Version="1.1" UUID="00000000-0000-4000-8000-000000000007" FechaTimbrado="2026-11-09T08:51:00"/>
+  </cfdi:Complemento>
+</cfdi:Comprobante>

@@ -1,0 +1,20 @@
+# Librerías externas que necesita el proyecto.
+# Instálalas con:  python -m pip install -r requirements.txt
+#
+# No hace falta poner sqlite3, xml.etree.ElementTree, hashlib ni unittest:
+# esas ya vienen incluidas con Python.
+#
+# Streamlit Community Cloud también lee este archivo para saber qué instalar.
+
+# Convierte el código Python en una página web (botones, tablas, carga de archivos).
+# Mínimo 1.67: el diseño usa menú superior, cuadrículas e íconos de esa versión.
+streamlit>=1.67
+
+# Tablas de datos (resultados, historial y reporte del mes)
+pandas>=2.2
+
+# Para mandar los avisos al bot de Telegram por internet
+requests>=2.32
+
+# Zonas horarias: para guardar las fechas con la hora de México
+tzdata
