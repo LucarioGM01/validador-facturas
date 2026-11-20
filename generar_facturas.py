@@ -115,6 +115,17 @@ FACTURAS_PRUEBA = [
      "estado_sat": "Vigente", "fecha_cancelacion": "", "esperado": "Vigente"},
 ]
 
+# Facturas de REEMPLAZO (regla RN-04): son las facturas NUEVAS que manda el
+# proveedor cuando una factura sale cancelada. Solo se agregan al CSV del
+# "SAT simulado" para que salgan Vigentes; NO cuentan entre las 10 de prueba.
+# Su archivo XML está en la carpeta facturas_reemplazo/ y se sube en
+# Historial -> "Validar y ligar".
+#   numero    -> número de la factura nueva (su folio termina en ese número)
+#   reemplaza -> número de la factura cancelada a la que sustituye
+FACTURAS_REEMPLAZO = [
+    {"numero": 11, "reemplaza": 3, "estado_sat": "Vigente", "fecha_cancelacion": ""},
+]
+
 # ---------------------------------------------------------------
 # 3. Plantilla del XML
 # ---------------------------------------------------------------
@@ -229,6 +240,13 @@ def generar_csv(ruta=RUTA_CSV):
                 folio_fiscal(factura["numero"]),
                 factura["estado_sat"],
                 factura["fecha_cancelacion"],
+            ])
+        # También las facturas de reemplazo, para que el SAT simulado las conozca.
+        for reemplazo in FACTURAS_REEMPLAZO:
+            escritor.writerow([
+                folio_fiscal(reemplazo["numero"]),
+                reemplazo["estado_sat"],
+                reemplazo["fecha_cancelacion"],
             ])
     return ruta
 

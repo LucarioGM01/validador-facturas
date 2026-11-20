@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<cfdi:Comprobante xmlns:cfdi="http://www.sat.gob.mx/cfd/4"
+    xmlns:tfd="http://www.sat.gob.mx/TimbreFiscalDigital"
+    Version="4.0" Fecha="2026-11-07T09:30:00" Moneda="MXN"
+    SubTotal="3000.00" Total="3480.00" TipoDeComprobante="I">
+  <cfdi:Emisor Rfc="CPR010101CD2" Nombre="COMPUTO PRUEBA SA DE CV" RegimenFiscal="601"/>
+  <cfdi:Receptor Rfc="ITM000101BB2" Nombre="INSTITUTO TECNOLOGICO DE PRUEBA" UsoCFDI="G03"/>
+  <cfdi:Conceptos>
+    <cfdi:Concepto Descripcion="Teclado y mouse inalambricos (factura de reemplazo del folio 0003)" Cantidad="4" ValorUnitario="750.00" Importe="3000.00"/>
+  </cfdi:Conceptos>
+  <cfdi:Impuestos TotalImpuestosTrasladados="480.00"/>
+  <cfdi:Complemento>
+    <tfd:TimbreFiscalDigital Version="1.1" UUID="00000000-0000-4000-8000-000000000011" FechaTimbrado="2026-11-07T09:31:00"/>
+  </cfdi:Complemento>
+</cfdi:Comprobante>
