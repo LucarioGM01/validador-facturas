@@ -135,6 +135,16 @@ def leer_factura(contenido_xml):
     except ValueError as error:
         raise FacturaInvalida("La Fecha no tiene un formato válido") from error
 
+    # Datos extra (no obligatorios) que se usan para dibujar la factura en imagen.
+    concepto = raiz.find("cfdi:Conceptos/cfdi:Concepto", NS)
+    descripcion = ""
+    if concepto is not None:
+        descripcion = concepto.get("Descripcion", "").strip()
+    try:
+        subtotal = float(raiz.get("SubTotal", total))
+    except ValueError:
+        subtotal = total
+
     # Paso 6: armar el diccionario. .upper() pasa los RFC y el UUID a mayúsculas
     # para que siempre se comparen igual.
     return {
@@ -145,6 +155,8 @@ def leer_factura(contenido_xml):
         "nombre_receptor": receptor.get("Nombre", "").strip(),  # opcional
         "total": total,
         "fecha": fecha,
+        "subtotal": subtotal,
+        "descripcion": descripcion,
     }
 
 

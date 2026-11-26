@@ -18,3 +18,9 @@ requests>=2.32
 
 # Zonas horarias: para guardar las fechas con la hora de México
 tzdata
+
+# Dibuja el código QR en la imagen de cada factura de prueba
+qrcode>=7.4
+
+# Lee el código QR de las fotos de facturas (versión sin ventanas, para servidores)
+opencv-python-headless>=4.8

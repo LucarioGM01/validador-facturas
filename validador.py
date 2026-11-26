@@ -109,13 +109,15 @@ def consultar_estado(uuid, ruta_csv=RUTA_CSV):
 # 4. Validación
 # ---------------------------------------------------------------
 
-def validar_factura(conexion, contenido_xml, usuario, nombre_archivo=""):
+def validar_factura(conexion, contenido_xml, usuario, nombre_archivo="", datos=None):
     """Valida UNA factura de principio a fin y regresa un diccionario con el resultado.
 
     - conexion:       la base de datos (base_datos.conectar())
     - contenido_xml:  el contenido del archivo (texto o bytes)
     - usuario:        quién está validando (RN-06)
     - nombre_archivo: solo para mostrarlo en pantalla
+    - datos:          (opcional) los datos YA leídos, por ejemplo de la foto de
+                      una factura con lector_imagen.py. Si vienen, no se lee XML.
 
     El orden es: leer el XML -> ¿ya estaba validada? (RN-07) -> consultar el SAT
     simulado -> revisar el receptor (RN-05) -> guardar el comprobante (RN-06).
@@ -137,15 +139,16 @@ def validar_factura(conexion, contenido_xml, usuario, nombre_archivo=""):
         "id_validacion": None,   # número del comprobante guardado
     }
 
-    # --- Paso 1: leer el XML (lector_xml.py) ---
-    try:
-        datos = leer_factura(contenido_xml)
-    except FacturaInvalida:
-        resultado["estado"] = ARCHIVO_INVALIDO
-        resultado["mensaje"] = (f"{MENSAJE_INVALIDA}. Revisa que sea el archivo .xml "
-                                "que mandó el proveedor (no el PDF).")
-        resultado["segundos"] = _segundos_desde(inicio)
-        return resultado  # no se guarda nada: ni siquiera sabemos el folio
+    # --- Paso 1: leer el XML (lector_xml.py), si los datos no vienen ya leídos ---
+    if datos is None:
+        try:
+            datos = leer_factura(contenido_xml)
+        except FacturaInvalida:
+            resultado["estado"] = ARCHIVO_INVALIDO
+            resultado["mensaje"] = (f"{MENSAJE_INVALIDA}. Revisa que sea el archivo .xml "
+                                    "que mandó el proveedor (no el PDF).")
+            resultado["segundos"] = _segundos_desde(inicio)
+            return resultado  # no se guarda nada: ni siquiera sabemos el folio
     resultado.update(datos)  # copia uuid, RFC, nombres, total y fecha
 
     # --- Paso 2: RN-07, ¿ya se había validado como vigente? ---

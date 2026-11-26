@@ -253,11 +253,17 @@ def generar_csv(ruta=RUTA_CSV):
 
 def main():
     """Crea todo y muestra en la terminal una tabla para revisar."""
+    # Se importa aquí (y no arriba) para que los demás archivos que usan
+    # generar_facturas no tengan que cargar las librerías de imágenes.
+    from imagen_factura import generar_imagenes
+
     rutas = generar_facturas()
     generar_csv()
+    imagenes = generar_imagenes()
 
     print(f"Listo: se crearon {len(rutas)} facturas en la carpeta {CARPETA_FACTURAS.name}/")
-    print(f"       y el archivo datos/{RUTA_CSV.name}")
+    print(f"       el archivo datos/{RUTA_CSV.name}")
+    print(f"       y {len(imagenes)} imágenes PNG (la factura «impresa» con su código QR)")
     print()
     print(f"{'#':>2}  {'Archivo':<15} {'Proveedor':<29} {'Receptor':<13} "
           f"{'Total':>11}  {'Estado SAT':<10}  Resultado esperado")

@@ -42,6 +42,9 @@ class TestLeerFacturaValida(unittest.TestCase):
         # Datos extra que también usa la app:
         self.assertEqual(datos["nombre_emisor"], "PAPELERIA EJEMPLO SA DE CV")
         self.assertEqual(datos["fecha"], "2026-11-03T10:15:00")
+        # Datos para dibujar la factura en imagen:
+        self.assertEqual(datos["subtotal"], 1250.00)
+        self.assertEqual(datos["descripcion"], "Resma de papel carta")
 
     def test_lee_las_10_facturas_de_prueba(self):
         """Las 10 facturas de prueba se leen con su folio, receptor y total correctos."""

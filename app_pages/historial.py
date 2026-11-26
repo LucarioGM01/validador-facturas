@@ -5,14 +5,7 @@ import streamlit as st
 
 import base_datos
 import interfaz
-from comprobante import (
-    NOMBRES_LOGO_MARCA,
-    NOMBRES_LOGO_TEC,
-    buscar_logo,
-    crear_comprobante_html,
-    logo_como_dato,
-    nombre_archivo_comprobante,
-)
+from comprobante import comprobante_png, nombre_archivo_comprobante
 from validador import (
     CANCELADA,
     ETIQUETAS,
@@ -117,9 +110,8 @@ with st.container(horizontal=True, vertical_alignment="bottom"):
         conexion, base_datos.obtener_id_ultima_validacion(conexion, elegida))
     st.download_button(
         "Descargar comprobante", icon=":material/download:",
-        data=crear_comprobante_html(validacion, logo_como_dato(buscar_logo(NOMBRES_LOGO_MARCA)),
-                                    logo_como_dato(buscar_logo(NOMBRES_LOGO_TEC))),
-        file_name=nombre_archivo_comprobante(validacion), mime="text/html", on_click="ignore",
+        data=comprobante_png(validacion),
+        file_name=nombre_archivo_comprobante(validacion), mime="image/png", on_click="ignore",
     )
 
 conexion.close()

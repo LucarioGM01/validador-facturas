@@ -5,14 +5,7 @@ import streamlit as st
 
 import base_datos
 import interfaz
-from comprobante import (
-    NOMBRES_LOGO_MARCA,
-    NOMBRES_LOGO_TEC,
-    buscar_logo,
-    crear_comprobante_html,
-    logo_como_dato,
-    nombre_archivo_comprobante,
-)
+from comprobante import comprobante_png, nombre_archivo_comprobante
 from validador import (
     ARCHIVO_INVALIDO,
     CANCELADA,
@@ -108,10 +101,8 @@ st.dataframe(
 
 # --- Comprobantes ---
 st.subheader("Comprobantes", icon=":material/receipt_long:")
-st.caption("Descarga el comprobante digital de cada factura. Ábrelo en el navegador para verlo, "
-           "o guárdalo como PDF con Ctrl + P.")
-logo_marca = logo_como_dato(buscar_logo(NOMBRES_LOGO_MARCA))
-logo_tec = logo_como_dato(buscar_logo(NOMBRES_LOGO_TEC))
+st.caption("Descarga el comprobante digital de cada factura. Es una imagen PNG: se abre "
+           "en cualquier celular o computadora, y se puede imprimir.")
 for numero, r in enumerate(resultados):
     id_validacion = r["id_validacion"]
     if id_validacion is None and r["uuid"]:  # repetida: usar su comprobante anterior
@@ -128,8 +119,8 @@ for numero, r in enumerate(resultados):
         else:
             st.download_button(
                 "Descargar", icon=":material/download:",
-                data=crear_comprobante_html(validacion, logo_marca, logo_tec),
-                file_name=nombre_archivo_comprobante(validacion), mime="text/html",
+                data=comprobante_png(validacion),
+                file_name=nombre_archivo_comprobante(validacion), mime="image/png",
                 key=f"comprobante_{numero}_{id_validacion}", on_click="ignore",
             )
 
