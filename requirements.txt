@@ -22,5 +22,8 @@ tzdata
 # Dibuja el código QR en la imagen de cada factura de prueba
 qrcode>=7.4
 
+# Manejo de imágenes y generación de comprobantes en PNG
+Pillow>=10.0
+
 # Lee el código QR de las fotos de facturas (versión sin ventanas, para servidores)
 opencv-python-headless>=4.8
