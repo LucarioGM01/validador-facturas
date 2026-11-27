@@ -80,6 +80,14 @@ for r in resultados:
             icon=":material/notifications_active:",
         )
 
+# --- Registro enviado a Telegram ---
+registro = st.session_state.get("registro")
+if registro:
+    if registro["enviado"]:
+        st.caption("✔ El registro de esta validación se envió por Telegram.")
+    else:
+        st.caption(f"El registro no se envió por Telegram: {registro['detalle']}")
+
 # --- Tabla ---
 st.subheader("Detalle por factura", icon=":material/table_view:")
 tabla = pd.DataFrame([{

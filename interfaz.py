@@ -14,8 +14,8 @@ import streamlit as st
 
 import avisos
 import base_datos
+import procesar_lote
 from comprobante import NOMBRE_CLIENTE, NOMBRES_LOGO_MARCA, NOMBRES_LOGO_TEC, buscar_logo
-from generar_facturas import generar_facturas
 from validador import (
     ARCHIVO_INVALIDO,
     CANCELADA,
@@ -24,10 +24,7 @@ from validador import (
     RECEPTOR_INCORRECTO,
     VIGENTE,
     registrar_factura_nueva,
-    validar_factura,
 )
-from lector_imagen import leer_clave_gemini, leer_factura_imagen
-from lector_xml import FacturaInvalida
 
 # ---------------------------------------------------------------
 # 1. Pantallas, colores e íconos
@@ -332,68 +329,38 @@ def credenciales_telegram():
         return "", ""
 
 
-def avisar_al_jefe(resultado, usuario):
-    """RN-02: manda el aviso de factura cancelada al jefe por Telegram.
-
-    Regresa {"enviado": True/False, "detalle": "..."} para mostrarlo en pantalla.
-    Si Telegram no está configurado, no falla: el aviso solo se ve en la app.
-    """
-    token, chat_id = credenciales_telegram()
-    mensaje = avisos.crear_mensaje_cancelada(resultado, usuario, base_datos.ahora())
-    return avisos.enviar_telegram(mensaje, token, chat_id)
+def clave_gemini():
+    """GEMINI_API_KEY de los secretos (secrets.toml en tu computadora, o
+    «Secrets» en Streamlit Cloud). Si no hay, regresa "" y las imágenes se leen
+    solo con el código QR."""
+    try:
+        return str(st.secrets.get("GEMINI_API_KEY", "")).strip()
+    except Exception:  # no existe secrets.toml
+        return ""
 
 
 def validar_archivos(archivos):
-    """archivos = [(nombre, contenido_en_bytes), ...]. Valida todos y guarda los
-    resultados en session_state para la pantalla de Resultados."""
+    """archivos = [(nombre, contenido_en_bytes), ...]. Valida todos, manda los
+    avisos y el registro a Telegram, y guarda los resultados en session_state
+    para la pantalla de Resultados.
+
+    El trabajo lo hace procesar_lote.py, el mismo que usa el bot de Telegram.
+    """
     conexion = base_datos.conectar()
-    usuario = st.session_state["usuario"]["usuario"]
-    clave_gemini = leer_clave_gemini()
-    resultados = []
-
-    for nombre, contenido in archivos:
-        extension = Path(nombre).suffix.lower()
-        es_imagen = extension in {".png", ".jpg", ".jpeg"}
-
-        if es_imagen:
-            try:
-                datos_imagen = leer_factura_imagen(contenido, clave_gemini)
-            except FacturaInvalida as error:
-                resultados.append({
-                    "archivo": nombre,
-                    "uuid": "", "rfc_emisor": "", "nombre_emisor": "",
-                    "rfc_receptor": "", "nombre_receptor": "", "total": 0.0, "fecha": "",
-                    "estado": ARCHIVO_INVALIDO,
-                    "fecha_cancelacion": "",
-                    "mensaje": f"No se pudo leer la imagen: {error}",
-                    "puede_pagarse": False,
-                    "avisar_jefe": False,
-                    "es_repetida": False,
-                    "segundos": 0.0,
-                    "id_validacion": None,
-                })
-                continue
-            resultado = validar_factura(conexion, contenido, usuario, nombre, datos=datos_imagen)
-        else:
-            resultado = validar_factura(conexion, contenido, usuario, nombre)
-
-        if resultado["avisar_jefe"]:
-            resultado["aviso"] = avisar_al_jefe(resultado, usuario)  # RN-02
-            if resultado["aviso"]["enviado"]:
-                base_datos.marcar_aviso_enviado(conexion, resultado["uuid"])
-        resultados.append(resultado)
-
+    token, chat_id = credenciales_telegram()
+    resultados, registro = procesar_lote.validar_lote(
+        conexion, archivos, st.session_state["usuario"]["usuario"],
+        clave_gemini=clave_gemini(), token=token, chat_id=chat_id, origen="app web",
+    )
     conexion.close()
     st.session_state["resultados"] = resultados
+    st.session_state["registro"] = registro  # para decir en Resultados si llegó a Telegram
     return resultados
 
 
 def validar_de_prueba():
     """Valida las 10 facturas inventadas de la carpeta facturas_prueba/."""
-    if not any(CARPETA_PRUEBA.glob("*.xml")):
-        generar_facturas()  # si no existen (por ejemplo en la nube), las crea
-    rutas = sorted(CARPETA_PRUEBA.glob("*.xml"))
-    return validar_archivos([(ruta.name, ruta.read_bytes()) for ruta in rutas])
+    return validar_archivos(procesar_lote.archivos_de_prueba())
 
 
 # ---------------------------------------------------------------
@@ -440,8 +407,12 @@ def ligar_nueva(uuid_cancelada, clave):
     archivo = st.session_state.get(clave)
     if archivo is None:
         return
+    usuario = st.session_state["usuario"]["usuario"]
     conexion = base_datos.conectar()
     resultado = registrar_factura_nueva(conexion, uuid_cancelada, archivo.getvalue(),
-                                        st.session_state["usuario"]["usuario"], archivo.name)
+                                        usuario, archivo.name)
     conexion.close()
+    # También es una validación: se manda su registro a Telegram.
+    procesar_lote.enviar_registro([resultado], usuario, *credenciales_telegram(),
+                                  origen="app web (factura nueva para ligar)")
     st.session_state["mensaje"] = ("success" if resultado["ligada"] else "error", resultado["mensaje"])

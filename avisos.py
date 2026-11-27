@@ -1,7 +1,10 @@
 """
 avisos.py
 ---------
-Manda el aviso al jefe por Telegram cuando una factura sale cancelada (RN-02).
+Manda los mensajes de Telegram:
+  - el aviso al jefe cuando una factura sale cancelada (RN-02), y
+  - el REGISTRO que se manda al terminar cada validación (todas correctas o
+    cuáles requieren atención).
 
 Usa la API de bots de Telegram: un simple POST a
     https://api.telegram.org/bot<TOKEN>/sendMessage
@@ -25,7 +28,16 @@ from pathlib import Path
 
 import requests
 
-from validador import formatear_fecha, formatear_fecha_hora
+from validador import (
+    ARCHIVO_INVALIDO,
+    CANCELADA,
+    ETIQUETAS,
+    NO_ENCONTRADA,
+    RECEPTOR_INCORRECTO,
+    VIGENTE,
+    formatear_fecha,
+    formatear_fecha_hora,
+)
 
 RUTA_SECRETOS = Path(__file__).parent / ".streamlit" / "secrets.toml"
 URL_API = "https://api.telegram.org/bot{token}/{metodo}"
@@ -33,6 +45,12 @@ URL_API = "https://api.telegram.org/bot{token}/{metodo}"
 # (segundos para conectar, segundos para esperar la respuesta). Así, si no hay
 # internet, la app no se queda "colgada" mucho tiempo.
 TIEMPO_ESPERA = (3, 7)
+
+# Telegram no acepta mensajes de más de 4096 letras. Dejamos un margen.
+LARGO_MAXIMO = 4000
+
+# Estados que "requieren atención" en el registro: todo lo que NO se puede pagar.
+ESTADOS_CON_INCIDENCIA = (CANCELADA, RECEPTOR_INCORRECTO, NO_ENCONTRADA, ARCHIVO_INVALIDO)
 
 
 # ---------------------------------------------------------------
@@ -88,6 +106,72 @@ MENSAJE_PRUEBA = ("✅ Prueba del Validador de facturas (Soluciones Digitales).\
                   "Si lees esto, los avisos por Telegram ya funcionan.")
 
 
+def _renglon_factura(numero, resultado):
+    """Datos clave de UNA factura para el registro (dos renglones)."""
+    if resultado["uuid"]:
+        datos = (f"…{resultado['uuid'][-4:]} · {resultado['nombre_emisor']} "
+                 f"({resultado['rfc_emisor']}) · ${resultado['total']:,.2f}")
+    else:
+        datos = f"Archivo {resultado['archivo'] or '(sin nombre)'}"  # no se pudo leer
+    repetida = " (ya validada antes)" if resultado["es_repetida"] else ""
+    return f"{numero}. {ETIQUETAS[resultado['estado']]}{repetida} · {datos}\n   {resultado['mensaje']}"
+
+
+def crear_mensaje_registro(resultados, usuario, fecha_hora, origen="app web"):
+    """Texto del REGISTRO que se manda al terminar cada validación.
+
+    Dice en la primera línea si TODAS las facturas salieron bien o si ALGUNA
+    requiere atención, y luego da el conteo y los datos de cada factura.
+
+    - resultados: lista de diccionarios de validador.validar_factura()
+    - usuario:    quién validó
+    - fecha_hora: cuándo, por ejemplo "2026-11-18T21:30:00"
+    - origen:     desde dónde se validó ("app web" o "bot de Telegram")
+    """
+    con_incidencia = [r for r in resultados if r["estado"] in ESTADOS_CON_INCIDENCIA]
+    correctas = [r for r in resultados if r["estado"] not in ESTADOS_CON_INCIDENCIA]
+
+    if not resultados:
+        titulo = "ℹ️ Registro de validación: no se recibió ninguna factura"
+    elif con_incidencia:
+        titulo = (f"⚠️ Registro de validación: {len(con_incidencia)} de {len(resultados)} "
+                  "REQUIEREN ATENCIÓN")
+    else:
+        titulo = f"✅ Registro de validación: las {len(resultados)} facturas están CORRECTAS"
+
+    renglones = [
+        titulo,
+        "",
+        f"Origen: {origen} · Validó: {usuario}",
+        f"Fecha: {formatear_fecha_hora(fecha_hora)}",
+        f"Facturas revisadas: {len(resultados)}",
+        "",
+        "Desglose:",
+    ]
+    # Conteo por estado. Las vigentes siempre se muestran; las demás solo si hay.
+    for estado in (VIGENTE, *ESTADOS_CON_INCIDENCIA):
+        cantidad = sum(1 for r in resultados if r["estado"] == estado)
+        if estado == VIGENTE:
+            repetidas = sum(1 for r in resultados if r["es_repetida"])
+            nota = f" ({repetidas} ya validada(s) antes)" if repetidas else ""
+            renglones.append(f"  {ETIQUETAS[estado]}: {cantidad}{nota}")
+        elif cantidad:
+            renglones.append(f"  {ETIQUETAS[estado]}: {cantidad}")
+
+    if con_incidencia:
+        renglones += ["", "Requieren atención:"]
+        renglones += [_renglon_factura(n, r) for n, r in enumerate(con_incidencia, start=1)]
+    if correctas:
+        renglones += ["", "Correctas (se pueden pagar):"]
+        renglones += [_renglon_factura(n, r) for n, r in enumerate(correctas, start=1)]
+
+    renglones += ["", "Validador de facturas · Soluciones Digitales (prototipo con datos de prueba)"]
+    mensaje = "\n".join(renglones)
+    if len(mensaje) > LARGO_MAXIMO:  # muchas facturas: se recorta para que Telegram lo acepte
+        mensaje = mensaje[:LARGO_MAXIMO - 60] + "\n\n… (mensaje recortado: ve el detalle en la app)"
+    return mensaje
+
+
 # ---------------------------------------------------------------
 # 3. Enviar
 # ---------------------------------------------------------------
@@ -105,8 +189,14 @@ def _explicar_error(codigo, descripcion):
     return f"Telegram respondió con un error (código {codigo})."
 
 
-def enviar_telegram(mensaje, token, chat_id):
+def enviar_telegram(mensaje, token, chat_id, botones=None):
     """Manda `mensaje` al chat por Telegram.
+
+    - botones: (opcional) botones que aparecen DEBAJO del mensaje (teclado
+      inline). Es una lista de filas; cada fila es una lista de botones:
+          [[{"text": "Validar", "callback_data": "validar_prueba"}]]
+      Al tocar un botón, Telegram le avisa al bot (bot_telegram.py) con el
+      texto de "callback_data".
 
     Regresa un diccionario:
         {"enviado": True,  "detalle": "Aviso enviado al jefe por Telegram."}
@@ -118,10 +208,11 @@ def enviar_telegram(mensaje, token, chat_id):
         return {"enviado": False, "detalle": f"Telegram no está configurado todavía. {motivo}"}
 
     url = URL_API.format(token=str(token).strip(), metodo="sendMessage")
+    cuerpo = {"chat_id": str(chat_id).strip(), "text": mensaje}
+    if botones:
+        cuerpo["reply_markup"] = {"inline_keyboard": botones}
     try:
-        respuesta = requests.post(
-            url, json={"chat_id": str(chat_id).strip(), "text": mensaje}, timeout=TIEMPO_ESPERA
-        )
+        respuesta = requests.post(url, json=cuerpo, timeout=TIEMPO_ESPERA)
     except requests.RequestException:
         # OJO: no mostramos el error original porque trae la dirección con el token.
         return {"enviado": False,
@@ -141,8 +232,9 @@ def enviar_telegram(mensaje, token, chat_id):
 # 4. Ayudas desde la terminal
 # ---------------------------------------------------------------
 
-def _leer_secretos_archivo():
-    """Lee TELEGRAM_TOKEN y TELEGRAM_CHAT_ID de .streamlit/secrets.toml."""
+def leer_secretos_archivo():
+    """Lee TELEGRAM_TOKEN y TELEGRAM_CHAT_ID de .streamlit/secrets.toml.
+    La usan las ayudas de este archivo y el bot (bot_telegram.py)."""
     if not RUTA_SECRETOS.exists():
         return "", ""
     with open(RUTA_SECRETOS, "rb") as archivo:
@@ -180,7 +272,7 @@ def _buscar_chat(token):
 
 
 if __name__ == "__main__":
-    token_archivo, chat_archivo = _leer_secretos_archivo()
+    token_archivo, chat_archivo = leer_secretos_archivo()
     accion = sys.argv[1] if len(sys.argv) > 1 else ""
 
     if accion == "chat":
