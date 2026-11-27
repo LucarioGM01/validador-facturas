@@ -36,6 +36,7 @@ python -m pip install -r requirements.txt
 | Ver cómo se validan las 10 facturas | `python validador.py` | Paso 4 |
 | Correr las pruebas | `python -m unittest discover tests -v` | Paso 3 |
 | Abrir la aplicación | `python -m streamlit run app.py` | Paso 5 |
+| Encender el bot de Telegram (en otra terminal) | `python bot_telegram.py` | Paso 7 |
 
 ## Usuarios de prueba
 
@@ -62,6 +63,30 @@ en pantalla.
    *Avisos por Telegram*.
 
 El token es secreto: nunca lo subas a GitHub ni lo compartas.
+
+Al terminar **cada validación** (desde la app o desde el bot) llega además un
+**registro**: dice si todas las facturas están correctas o cuántas requieren
+atención, con el desglose y los datos de cada una.
+
+### Bot de Telegram (validar desde el celular)
+
+Con Telegram ya configurado (pasos de arriba), abre **otra** terminal y escribe:
+
+```bash
+python bot_telegram.py
+```
+
+Déjala abierta y escríbele `/menu` a tu bot. Aparecen tres botones:
+**Validar facturas de prueba**, **Resumen del mes** y **Reiniciar demostración**
+(este último pide confirmación). También puedes mandarle el `.xml` o la foto de
+una factura para validarla. Para apagar el bot: `Ctrl + C`.
+
+- El bot solo obedece al chat de `TELEGRAM_CHAT_ID`; nadie más puede usarlo.
+- Corre en tu computadora y usa la misma base de datos que la app local. La
+  app publicada en Streamlit Cloud tiene su propia base de datos, así que lo
+  que valides con el bot no aparece allá.
+- Mientras el bot está encendido, `python avisos.py chat` no funciona (los dos
+  leen los mensajes del bot). Apaga el bot si necesitas buscar tu chat_id.
 
 ## Publicar en internet (Streamlit Community Cloud)
 
@@ -93,7 +118,9 @@ En la nube la base de datos se borra cuando la app se reinicia o se duerme
 ├── validador.py               → consulta el estado y aplica las reglas de negocio
 ├── base_datos.py              → guarda y consulta en SQLite
 ├── comprobante.py             → arma el comprobante digital descargable (HTML)
-├── avisos.py                  → manda los avisos a Telegram
+├── avisos.py                  → arma y manda los avisos y el registro a Telegram
+├── procesar_lote.py           → valida un grupo de facturas (lo usan la app y el bot)
+├── bot_telegram.py            → bot de Telegram con botones para validar y ver el resumen
 ├── generar_facturas.py        → crea 10 facturas XML de prueba
 ├── logo.png                   → logo de Soluciones Digitales (se agrega a mano)
 ├── logo_tec.png               → logo del Instituto Tecnológico de Matehuala
