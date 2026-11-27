@@ -26,6 +26,8 @@ from validador import (
     registrar_factura_nueva,
     validar_factura,
 )
+from lector_imagen import leer_clave_gemini, leer_factura_imagen
+from lector_xml import FacturaInvalida
 
 # ---------------------------------------------------------------
 # 1. Pantallas, colores e íconos
@@ -346,14 +348,41 @@ def validar_archivos(archivos):
     resultados en session_state para la pantalla de Resultados."""
     conexion = base_datos.conectar()
     usuario = st.session_state["usuario"]["usuario"]
+    clave_gemini = leer_clave_gemini()
     resultados = []
+
     for nombre, contenido in archivos:
-        resultado = validar_factura(conexion, contenido, usuario, nombre)
+        extension = Path(nombre).suffix.lower()
+        es_imagen = extension in {".png", ".jpg", ".jpeg"}
+
+        if es_imagen:
+            try:
+                datos_imagen = leer_factura_imagen(contenido, clave_gemini)
+            except FacturaInvalida as error:
+                resultados.append({
+                    "archivo": nombre,
+                    "uuid": "", "rfc_emisor": "", "nombre_emisor": "",
+                    "rfc_receptor": "", "nombre_receptor": "", "total": 0.0, "fecha": "",
+                    "estado": ARCHIVO_INVALIDO,
+                    "fecha_cancelacion": "",
+                    "mensaje": f"No se pudo leer la imagen: {error}",
+                    "puede_pagarse": False,
+                    "avisar_jefe": False,
+                    "es_repetida": False,
+                    "segundos": 0.0,
+                    "id_validacion": None,
+                })
+                continue
+            resultado = validar_factura(conexion, contenido, usuario, nombre, datos=datos_imagen)
+        else:
+            resultado = validar_factura(conexion, contenido, usuario, nombre)
+
         if resultado["avisar_jefe"]:
             resultado["aviso"] = avisar_al_jefe(resultado, usuario)  # RN-02
             if resultado["aviso"]["enviado"]:
                 base_datos.marcar_aviso_enviado(conexion, resultado["uuid"])
         resultados.append(resultado)
+
     conexion.close()
     st.session_state["resultados"] = resultados
     return resultados
