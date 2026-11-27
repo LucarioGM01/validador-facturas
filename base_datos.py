@@ -74,6 +74,28 @@ CREATE TABLE IF NOT EXISTS validaciones (
     usuario     TEXT NOT NULL,
     segundos    REAL NOT NULL                       -- cuánto tardó la validación
 );
+
+-- Avance EN VIVO de cada grupo de facturas que llega (lo escribe el bot o la
+-- página y lo lee la pantalla «En vivo»).
+CREATE TABLE IF NOT EXISTS seguimientos (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    origen         TEXT NOT NULL,                   -- «carpeta bandeja_entrada», «app web»...
+    total          INTEGER NOT NULL,                -- cuántas facturas llegaron
+    hechas         INTEGER NOT NULL DEFAULT 0,      -- cuántas ya se validaron
+    correctas      INTEGER NOT NULL DEFAULT 0,
+    con_problema   INTEGER NOT NULL DEFAULT 0,
+    terminado      INTEGER NOT NULL DEFAULT 0,      -- 1 = ya terminó
+    inicio         TEXT NOT NULL,
+    actualizado    TEXT NOT NULL,                   -- última vez que cambió
+    texto          TEXT NOT NULL DEFAULT ''         -- todos los pasos, ya escritos
+);
+
+-- «Latido» del bot: cada pocos segundos escribe aquí la hora, para que la
+-- página pueda decir si el bot está encendido.
+CREATE TABLE IF NOT EXISTS latido (
+    id    INTEGER PRIMARY KEY CHECK (id = 1),       -- una sola fila
+    hora  TEXT NOT NULL
+);
 """
 
 
@@ -253,6 +275,7 @@ def borrar_facturas(conexion):
         conexion.execute("DELETE FROM validaciones")
         conexion.execute("UPDATE facturas SET uuid_reemplazo = NULL")  # quita las ligas primero
         conexion.execute("DELETE FROM facturas")
+        conexion.execute("DELETE FROM seguimientos")  # también el avance en vivo de la demo
 
 
 def _sin_acentos(texto):
@@ -351,3 +374,57 @@ def resumen_mes(conexion, mes):
         "hojas_ahorradas": total,
         "segundos_promedio": promedio or 0.0,  # AVG da None si no hay filas
     }
+
+
+# ---------------------------------------------------------------
+# 5. Avance en vivo y latido del bot
+# ---------------------------------------------------------------
+
+def crear_seguimiento(conexion, origen, total):
+    """Anota que llegó un grupo de facturas. Regresa su número (id)."""
+    ahora_texto = ahora()
+    with conexion:
+        cursor = conexion.execute(
+            "INSERT INTO seguimientos (origen, total, inicio, actualizado) VALUES (?, ?, ?, ?)",
+            (origen, total, ahora_texto, ahora_texto),
+        )
+    return cursor.lastrowid
+
+
+def actualizar_seguimiento(conexion, id_seguimiento, hechas, correctas, con_problema,
+                           terminado, texto):
+    """Guarda cómo va un grupo de facturas (cuántas van y todos sus pasos)."""
+    with conexion:
+        conexion.execute(
+            """
+            UPDATE seguimientos
+            SET hechas = ?, correctas = ?, con_problema = ?, terminado = ?,
+                actualizado = ?, texto = ?
+            WHERE id = ?
+            """,
+            (hechas, correctas, con_problema, int(terminado), ahora(), texto, id_seguimiento),
+        )
+
+
+def ultimos_seguimientos(conexion, limite=6):
+    """Los últimos grupos de facturas, del más reciente al más antiguo."""
+    filas = conexion.execute(
+        "SELECT * FROM seguimientos ORDER BY id DESC LIMIT ?", (limite,)
+    )
+    return [dict(fila) for fila in filas]
+
+
+def guardar_latido(conexion):
+    """El bot avisa «sigo encendido»."""
+    with conexion:
+        conexion.execute(
+            "INSERT INTO latido (id, hora) VALUES (1, ?) "
+            "ON CONFLICT(id) DO UPDATE SET hora = excluded.hora",
+            (ahora(),),
+        )
+
+
+def leer_latido(conexion):
+    """Hora del último latido del bot ("2026-11-27T15:30:00"), o None si nunca avisó."""
+    fila = conexion.execute("SELECT hora FROM latido WHERE id = 1").fetchone()
+    return fila["hora"] if fila else None

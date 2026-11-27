@@ -16,6 +16,7 @@ import avisos
 import base_datos
 import procesar_lote
 from comprobante import NOMBRE_CLIENTE, NOMBRES_LOGO_MARCA, NOMBRES_LOGO_TEC, buscar_logo
+from seguimiento import GuardarEnBD, Progreso
 from validador import (
     ARCHIVO_INVALIDO,
     CANCELADA,
@@ -37,6 +38,7 @@ CARPETA_PRUEBA = CARPETA / "facturas_prueba"
 PAG_ACCESO = "app_pages/acceso.py"
 PAG_INICIO = "app_pages/inicio.py"
 PAG_CARGAR = "app_pages/cargar.py"
+PAG_EN_VIVO = "app_pages/en_vivo.py"
 PAG_RESULTADOS = "app_pages/resultados.py"
 PAG_HISTORIAL = "app_pages/historial.py"
 PAG_REPORTE = "app_pages/reporte.py"
@@ -53,6 +55,11 @@ OPCIONES = {
         "titulo": "Cargar facturas", "icono": ":material/upload_file:", "pagina": PAG_CARGAR,
         "color": "#2F5DA8", "fondo": "#E6EEF9", "ilustracion": "cargar",
         "descripcion": "Sube los XML de los proveedores o usa las facturas de prueba.",
+    },
+    "en_vivo": {
+        "titulo": "En vivo", "icono": ":material/sensors:", "pagina": PAG_EN_VIVO,
+        "color": "#0E7C86", "fondo": "#E1F2F3", "ilustracion": "resultados",
+        "descripcion": "Mira en tiempo real cómo llegan y se validan las facturas.",
     },
     "resultados": {
         "titulo": "Resultados", "icono": ":material/fact_check:", "pagina": PAG_RESULTADOS,
@@ -348,9 +355,12 @@ def validar_archivos(archivos):
     """
     conexion = base_datos.conectar()
     token, chat_id = credenciales_telegram()
+    # El avance se guarda en la base de datos: la pantalla «En vivo» lo muestra.
+    progreso = Progreso("app web", len(archivos), al_cambiar=GuardarEnBD(conexion))
     resultados, registro = procesar_lote.validar_lote(
         conexion, archivos, st.session_state["usuario"]["usuario"],
         clave_gemini=clave_gemini(), token=token, chat_id=chat_id, origen="app web",
+        progreso=progreso,
     )
     conexion.close()
     st.session_state["resultados"] = resultados

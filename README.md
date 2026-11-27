@@ -81,6 +81,29 @@ Déjala abierta y escríbele `/menu` a tu bot. Aparecen tres botones:
 (este último pide confirmación). También puedes mandarle el `.xml` o la foto de
 una factura para validarla. Para apagar el bot: `Ctrl + C`.
 
+### Facturas que llegan solas y avance en vivo
+
+Con el bot encendido, **vigila la carpeta `bandeja_entrada/`** (se crea sola):
+cualquier `.xml`, `.png` o `.jpg` que caiga ahí se valida automáticamente y
+pasa a `bandeja_entrada/procesadas/`. Lo que no sea una factura (por ejemplo un
+PDF) pasa a `rechazadas/`.
+
+Mientras se valida, el avance se ve **en tiempo real** en dos lugares:
+
+- **Telegram:** un mensaje que se edita solo y dice cuántas facturas llegaron,
+  cuántas van, cuántas son correctas y cuáles requieren atención, con el motivo
+  de cada falla (por ejemplo «Cancelada el 05/11/2026»).
+- **Página web → «En vivo»:** los mismos contadores, una barra de avance y todos
+  los pasos de cada factura (leer el archivo, comprobar el folio, consultar el
+  SAT, revisar el receptor). Se actualiza sola cada 2 segundos.
+
+Para probarlo sin copiar archivos, usa el botón **Simular llegada de facturas**
+(en Telegram o en la página «En vivo»). Diez facturas se validan en alrededor de
+un segundo; las fotos tardan unos segundos más porque las lee la IA.
+
+La pantalla «En vivo» lee la base de datos que escribe el bot, así que solo
+funciona cuando la página y el bot corren en la misma computadora.
+
 - El bot solo obedece al chat de `TELEGRAM_CHAT_ID`; nadie más puede usarlo.
 - Corre en tu computadora y usa la misma base de datos que la app local. La
   app publicada en Streamlit Cloud tiene su propia base de datos, así que lo
@@ -110,6 +133,7 @@ En la nube la base de datos se borra cuando la app se reinicia o se duerme
 │   ├── acceso.py              → inicio de sesión
 │   ├── inicio.py              → resumen del mes y accesos rápidos
 │   ├── cargar.py              → cargar facturas
+│   ├── en_vivo.py             → llegada y validación de facturas en tiempo real
 │   ├── resultados.py          → resultados y comprobantes
 │   ├── historial.py           → búsqueda y seguimiento de canceladas (jefe)
 │   └── reporte.py             → reporte del mes
@@ -120,7 +144,9 @@ En la nube la base de datos se borra cuando la app se reinicia o se duerme
 ├── comprobante.py             → arma el comprobante digital descargable (HTML)
 ├── avisos.py                  → arma y manda los avisos y el registro a Telegram
 ├── procesar_lote.py           → valida un grupo de facturas (lo usan la app y el bot)
-├── bot_telegram.py            → bot de Telegram con botones para validar y ver el resumen
+├── bot_telegram.py            → bot de Telegram: botones, carpeta vigilada y mensaje en vivo
+├── seguimiento.py             → lleva el avance en vivo (cuántas van, cada paso, por qué falló)
+├── bandeja_entrada/           → las facturas que caen aquí se validan solas (no se sube a GitHub)
 ├── generar_facturas.py        → crea 10 facturas XML de prueba
 ├── logo.png                   → logo de Soluciones Digitales (se agrega a mano)
 ├── logo_tec.png               → logo del Instituto Tecnológico de Matehuala

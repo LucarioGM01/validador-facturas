@@ -8,6 +8,9 @@
 *.db
 *.sqlite3
 
+# --- Carpeta donde caen las facturas que el bot valida solo ---
+bandeja_entrada/
+
 # --- Archivos temporales que Python crea automáticamente ---
 __pycache__/
 *.pyc

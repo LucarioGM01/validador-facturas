@@ -116,5 +116,38 @@ class TestEnviar(unittest.TestCase):
         self.assertNotIn(TOKEN_FALSO, respuesta["detalle"])
 
 
+class TestEditar(unittest.TestCase):
+
+    @mock.patch("avisos.requests.post")
+    def test_envio_regresa_el_id_del_mensaje(self, post):
+        post.return_value = respuesta_falsa(200, {"ok": True, "result": {"message_id": 55}})
+        respuesta = avisos.enviar_telegram("hola", TOKEN_FALSO, CHAT_FALSO)
+        self.assertEqual(respuesta["mensaje_id"], 55)
+
+    @mock.patch("avisos.requests.post")
+    def test_editar_cambia_el_texto_del_mensaje(self, post):
+        post.return_value = respuesta_falsa(200, {"ok": True})
+        self.assertTrue(avisos.editar_telegram("nuevo", 55, TOKEN_FALSO, CHAT_FALSO))
+        self.assertTrue(post.call_args.args[0].endswith("/editMessageText"))
+        self.assertEqual(post.call_args.kwargs["json"],
+                         {"chat_id": CHAT_FALSO, "message_id": 55, "text": "nuevo"})
+
+    @mock.patch("avisos.requests.post")
+    def test_editar_con_el_mismo_texto_no_es_error(self, post):
+        post.return_value = respuesta_falsa(400, {"ok": False, "description":
+                                                  "Bad Request: message is not modified"})
+        self.assertTrue(avisos.editar_telegram("igual", 55, TOKEN_FALSO, CHAT_FALSO))
+
+    @mock.patch("avisos.requests.post")
+    def test_editar_sin_internet_no_truena(self, post):
+        post.side_effect = requests.ConnectionError("sin internet")
+        self.assertFalse(avisos.editar_telegram("x", 55, TOKEN_FALSO, CHAT_FALSO))
+
+    @mock.patch("avisos.requests.post")
+    def test_editar_sin_id_no_se_conecta(self, post):
+        self.assertFalse(avisos.editar_telegram("x", None, TOKEN_FALSO, CHAT_FALSO))
+        post.assert_not_called()
+
+
 if __name__ == "__main__":
     unittest.main()

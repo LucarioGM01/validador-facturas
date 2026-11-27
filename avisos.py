@@ -235,9 +235,31 @@ def enviar_telegram(mensaje, token, chat_id, botones=None):
     except ValueError:
         datos = {}
     if respuesta.status_code == 200 and datos.get("ok"):
-        return {"enviado": True, "detalle": "Aviso enviado al jefe por Telegram."}
+        # "mensaje_id" sirve para editar este mismo mensaje después (avance en vivo).
+        return {"enviado": True, "detalle": "Aviso enviado al jefe por Telegram.",
+                "mensaje_id": (datos.get("result") or {}).get("message_id")}
     return {"enviado": False,
             "detalle": _explicar_error(respuesta.status_code, str(datos.get("description", "")))}
+
+
+def editar_telegram(mensaje, mensaje_id, token, chat_id):
+    """Cambia el texto de un mensaje que ya mandamos (así se ve el avance EN VIVO
+    en un solo mensaje, sin llenar el chat). Regresa True si se pudo.
+
+    Si Telegram dice «message is not modified» (el texto quedó igual) no es un
+    error real, así que también regresa True.
+    """
+    listo, _ = revisar_configuracion(token, chat_id)
+    if not listo or not mensaje_id:
+        return False
+    try:
+        respuesta = requests.post(URL_API.format(token=str(token).strip(), metodo="editMessageText"),
+                                  json={"chat_id": str(chat_id).strip(), "message_id": mensaje_id,
+                                        "text": mensaje}, timeout=TIEMPO_ESPERA)
+        datos = respuesta.json()
+    except (requests.RequestException, ValueError):
+        return False  # sin mostrar el error: trae la dirección con el token
+    return bool(datos.get("ok")) or "not modified" in str(datos.get("description", ""))
 
 
 # ---------------------------------------------------------------

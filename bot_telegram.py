@@ -12,6 +12,10 @@ Qué sabe hacer:
   - Si le mandas el archivo .xml o la foto (PNG/JPG) de una factura, la valida.
   - Al terminar cada validación manda el REGISTRO: si todas salieron
     correctas o cuáles requieren atención (lo arma avisos.py).
+  - VIGILA la carpeta «bandeja_entrada»: cualquier factura (.xml, .png, .jpg)
+    que caiga ahí se valida sola. Mientras tanto, un mensaje se va EDITANDO en
+    vivo: cuántas facturas llegaron, cuántas van, cada paso (leer, comprobar el
+    folio, consultar el SAT, revisar el receptor) y el porqué si alguna falla.
 
 Cómo funciona: "long polling". El programa le pregunta a Telegram, una y otra
 vez, «¿hay mensajes nuevos?». Telegram espera hasta 25 segundos a que llegue
@@ -29,6 +33,7 @@ Usa la misma base de datos (validador.db) que la página web cuando los dos
 corren en la misma computadora, así que lo validado aquí sale en el Historial.
 """
 
+import shutil
 import sys
 import time
 from pathlib import Path
@@ -39,6 +44,7 @@ import avisos
 import base_datos
 import procesar_lote
 from lector_imagen import leer_clave_gemini
+from seguimiento import GuardarEnBD, Progreso
 
 # ---------------------------------------------------------------
 # 1. Constantes
@@ -47,14 +53,25 @@ from lector_imagen import leer_clave_gemini
 USUARIO_BOT = "bot_telegram"   # se guarda como "quién validó" (RN-06)
 ORIGEN = "bot de Telegram"
 
-ESPERA_LARGA = 25              # segundos que Telegram espera mensajes nuevos
+ESPERA_LARGA = 1               # segundos que Telegram espera mensajes nuevos (corto,
+                               # para revisar la carpeta bandeja_entrada seguido)
 TAMANO_MAXIMO = 5 * 1024 * 1024  # 5 MB, igual que en la página web
+INTERVALO_EDICION = 1.0        # el mensaje en vivo se edita como máximo 1 vez por segundo
+                               # (Telegram limita las ediciones). NO se hacen pausas: la
+                               # validación va a toda velocidad y el mensaje se actualiza
+                               # cuando toca.
+
+# Carpeta que el bot vigila: lo que caiga aquí se valida solo.
+CARPETA_BANDEJA = procesar_lote.CARPETA_BANDEJA
+SEGUNDOS_ESTABLE = 1           # un archivo se lee hasta que lleva 1 s sin cambiar
+                               # (así no se lee a medias mientras se copia)
 URL_ARCHIVO = "https://api.telegram.org/file/bot{token}/{ruta}"
 
 # Teclado inline: lista de filas, cada fila es una lista de botones. Al tocar
 # uno, Telegram le manda al bot el texto de "callback_data".
 MENU = [
     [{"text": "✅ Validar facturas de prueba", "callback_data": "validar_prueba"}],
+    [{"text": "📥 Simular llegada de facturas", "callback_data": "simular_llegada"}],
     [{"text": "📊 Resumen del mes", "callback_data": "resumen_mes"}],
     [{"text": "🔄 Reiniciar demostración", "callback_data": "reiniciar"}],
 ]
@@ -67,6 +84,7 @@ CONFIRMAR_REINICIO = [[
 # Texto cortito que aparece arriba en Telegram al tocar cada botón.
 TEXTOS_ESPERA = {
     "validar_prueba": "Validando las facturas de prueba…",
+    "simular_llegada": "Dejando facturas en la bandeja…",
     "resumen_mes": "Armando el resumen…",
     "reiniciar_si": "Borrando los datos de prueba…",
 }
@@ -126,21 +144,144 @@ def descargar_archivo(token, file_id):
 # 3. Lo que hace cada botón
 # ---------------------------------------------------------------
 
-def validar_y_registrar(config, archivos):
+class MensajeEnVivo:
+    """UN mensaje de Telegram que se va EDITANDO mientras se validan las facturas.
+
+    La primera vez se manda; las siguientes veces se cambia su texto. Así el jefe
+    ve en el celular cuántas facturas llegaron, cuántas van y cada paso, sin que
+    el chat se llene de mensajes.
+    """
+
+    def __init__(self, config):
+        self.config = config
+        self.mensaje_id = None
+        self.ultimo_texto = ""
+        self.ultima_vez = 0.0  # cuándo se editó por última vez
+
+    def mostrar(self, progreso):
+        """Es la función "al_cambiar" del Progreso: se llama con cada cambio.
+
+        No se espera nada: si el último cambio fue hace menos de INTERVALO_EDICION
+        segundos, este se salta (el siguiente mostrará todo). Siempre se muestra el
+        primer mensaje, el final y los pasos lentos de la IA.
+        """
+        urgente = progreso.terminado or "IA" in progreso.paso_en_curso()
+        if (self.mensaje_id is not None and not urgente
+                and time.monotonic() - self.ultima_vez < INTERVALO_EDICION):
+            return
+        texto = progreso.texto_telegram()
+        if texto == self.ultimo_texto:
+            return  # Telegram rechaza editar con el mismo texto
+        self.ultimo_texto = texto
+        if self.mensaje_id is None:
+            respuesta = enviar(self.config, texto)
+            self.mensaje_id = respuesta.get("mensaje_id")
+        else:
+            avisos.editar_telegram(texto, self.mensaje_id,
+                                   self.config["token"], self.config["chat_id"])
+        self.ultima_vez = time.monotonic()
+
+
+def validar_y_registrar(config, archivos, origen=ORIGEN):
     """Valida los archivos con procesar_lote.py, igual que la página web.
 
+    Mientras valida, un mensaje de Telegram se edita EN VIVO (MensajeEnVivo).
     procesar_lote manda los avisos de canceladas y el REGISTRO; aquí solo le
     pedimos que el registro lleve el menú abajo, para seguir usando el bot.
     """
+    en_vivo = MensajeEnVivo(config)
     conexion = base_datos.conectar(config["ruta_bd"])
+    # Cada cambio se guarda en la base de datos (lo lee la pantalla «En vivo» de
+    # la página web) y se edita el mensaje de Telegram.
+    progreso = Progreso(origen, len(archivos), al_cambiar=[GuardarEnBD(conexion), en_vivo.mostrar])
     try:
         resultados, registro = procesar_lote.validar_lote(
             conexion, archivos, USUARIO_BOT, clave_gemini=config["clave_gemini"],
-            token=config["token"], chat_id=config["chat_id"], origen=ORIGEN, botones=MENU,
+            token=config["token"], chat_id=config["chat_id"], origen=origen, botones=MENU,
+            progreso=progreso,
         )
     finally:
         conexion.close()  # se cierra aunque algo falle
     return resultados, registro
+
+
+# ---------------------------------------------------------------
+# 2b. La carpeta vigilada: «bandeja_entrada»
+# ---------------------------------------------------------------
+
+def archivos_nuevos_en_bandeja(carpeta=None):
+    """Archivos que están en la bandeja listos para validarse.
+
+    Se ignoran las carpetas, los archivos ocultos o temporales (empiezan con
+    «.» o «~») y los que cambiaron hace menos de SEGUNDOS_ESTABLE segundos
+    (todavía se están copiando).
+    """
+    carpeta = carpeta or CARPETA_BANDEJA
+    if not carpeta.exists():
+        return []
+    listos = []
+    for ruta in sorted(carpeta.iterdir()):
+        if not ruta.is_file() or ruta.name.startswith((".", "~")):
+            continue
+        if time.time() - ruta.stat().st_mtime < SEGUNDOS_ESTABLE:
+            continue
+        listos.append(ruta)
+    return listos
+
+
+def mover_a(ruta, subcarpeta):
+    """Mueve un archivo a bandeja_entrada/<subcarpeta>/ para no validarlo dos veces.
+    Si ya hay uno con ese nombre, le agrega la hora para no pisarlo."""
+    destino_carpeta = ruta.parent / subcarpeta
+    destino_carpeta.mkdir(exist_ok=True)
+    destino = destino_carpeta / ruta.name
+    if destino.exists():
+        destino = destino_carpeta / f"{ruta.stem}_{time.strftime('%H%M%S')}{ruta.suffix}"
+    shutil.move(str(ruta), str(destino))
+
+
+def revisar_bandeja(config, carpeta=None):
+    """Valida lo que haya llegado a la bandeja. Regresa cuántas facturas llegaron.
+
+    - .xml / .png / .jpg  -> se validan (con el mensaje en vivo) y pasan a «procesadas»
+    - cualquier otra cosa o más de 5 MB -> se avisa por Telegram y pasa a «rechazadas»
+    """
+    rutas = archivos_nuevos_en_bandeja(carpeta)
+    if not rutas:
+        return 0
+
+    aceptadas, rechazadas = [], []
+    for ruta in rutas:
+        bien = (ruta.suffix.lower() in procesar_lote.EXTENSIONES_ACEPTADAS
+                and ruta.stat().st_size <= TAMANO_MAXIMO)
+        (aceptadas if bien else rechazadas).append(ruta)
+
+    for ruta in rechazadas:
+        enviar(config, f"📂 En la bandeja llegó «{ruta.name}», pero no es una factura que pueda "
+                       "leer (solo .xml, .png o .jpg de hasta 5 MB). Lo moví a «rechazadas».", MENU)
+        mover_a(ruta, "rechazadas")
+
+    if aceptadas:
+        try:
+            archivos = [(ruta.name, ruta.read_bytes()) for ruta in aceptadas]
+            validar_y_registrar(config, archivos, origen="carpeta bandeja_entrada")
+            destino = "procesadas"
+        except Exception as error:  # un error no debe apagar el bot ni repetirse sin fin
+            print(f"Error al validar la bandeja: {type(error).__name__}: {error}")
+            enviar(config, "Ocurrió un error al validar las facturas de la bandeja. "
+                           "Las moví a «con_error».", MENU)
+            destino = "con_error"
+        for ruta in aceptadas:
+            mover_a(ruta, destino)
+    return len(aceptadas)
+
+
+def simular_llegada(config):
+    """Botón de demostración: copia las facturas de prueba a la bandeja, como si
+    los proveedores las hubieran mandado. El bot las detecta y las valida solo."""
+    procesar_lote.dejar_facturas_de_prueba(CARPETA_BANDEJA)
+    enviar(config, "📥 Dejé las facturas de prueba en la carpeta «bandeja_entrada». "
+                   "En unos segundos el bot las detecta y las valida solo.")
 
 
 def texto_resumen_mes(resumen, mes):
@@ -183,6 +324,8 @@ def atender_boton(accion, config):
     """Hace lo que corresponde al botón tocado (su callback_data)."""
     if accion == "validar_prueba":
         validar_y_registrar(config, procesar_lote.archivos_de_prueba())
+    elif accion == "simular_llegada":
+        simular_llegada(config)
     elif accion == "resumen_mes":
         mandar_resumen(config)
     elif accion == "reiniciar":
@@ -295,10 +438,22 @@ def escuchar(config):
     pendientes = llamar(token, "getUpdates", {"timeout": 0}) or []
     desplazamiento = pendientes[-1]["update_id"] + 1 if pendientes else None
 
+    CARPETA_BANDEJA.mkdir(exist_ok=True)
     print(f"Bot @{yo['username']} escuchando. Escríbele /menu en Telegram. (Ctrl + C para detener)")
-    enviar(config, "🟢 El bot está encendido.\n\n" + TEXTO_MENU, MENU)
+    print(f"Vigilando la carpeta: {CARPETA_BANDEJA}", flush=True)
+    enviar(config, "🟢 El bot está encendido y vigila la carpeta «bandeja_entrada»: las "
+                   "facturas que lleguen ahí se validan solas.\n\n" + TEXTO_MENU, MENU)
+
+    latido = base_datos.conectar(config["ruta_bd"])  # para decirle a la página «sigo vivo»
 
     while True:
+        base_datos.guardar_latido(latido)
+        # Primero se revisa la carpeta: si llegó algo, se valida (con mensaje en vivo).
+        try:
+            revisar_bandeja(config)
+        except Exception as error:  # la carpeta no debe apagar el bot
+            print(f"Error al revisar la bandeja: {type(error).__name__}: {error}")
+
         datos = {"timeout": ESPERA_LARGA, "allowed_updates": ["message", "callback_query"]}
         if desplazamiento is not None:
             datos["offset"] = desplazamiento  # "ya leí hasta aquí"

@@ -221,7 +221,7 @@ def crear_aviso_lectura(fuente, detalle):
             + ". Se usaron los datos del QR. Revisa la factura antes de pagar: puede ser "
               "un error de lectura o una factura alterada.")
 
-def leer_factura_imagen(contenido, clave_gemini=""):
+def leer_factura_imagen(contenido, clave_gemini="", al_paso=None):
     """Lee la imagen de una factura y regresa sus datos.
 
     El diccionario trae las claves de leer_factura() y además:
@@ -229,10 +229,25 @@ def leer_factura_imagen(contenido, clave_gemini=""):
       coinciden   -> True si el QR y Gemini leyeron lo mismo
       diferencias -> lista de los datos que no coincidieron
       aviso_lectura -> texto si hay que revisar la lectura a mano, o "" si es confiable
+    al_paso (opcional): función que recibe un texto por cada paso, para verlo en vivo.
     Si no se pudo leer nada, lanza FacturaInvalida.
     """
+    def avisar(texto):
+        if al_paso is not None:
+            al_paso(texto)
+
+    avisar("⏳ Buscando el código QR en la imagen…")
     del_qr = leer_qr(contenido)
+    if del_qr is None:
+        avisar("✖ No se encontró un código QR legible")
+    else:
+        avisar(f"✔ QR leído: folio …{del_qr['uuid'][-4:]} · ${del_qr['total']:,.2f}")
+
+    if clave_gemini:
+        avisar("⏳ Leyendo el texto de la factura con la IA (Gemini)…")
     de_ia, motivo_ia = leer_con_gemini(contenido, clave_gemini)
+    if clave_gemini:
+        avisar("✔ La IA leyó la factura" if de_ia is not None else f"✖ La IA no pudo leerla: {motivo_ia}")
 
     if del_qr is None and de_ia is None:
         raise FacturaInvalida(f"No se encontró el código QR y la IA no pudo leerla. {motivo_ia}")
@@ -288,6 +303,9 @@ def leer_factura_imagen(contenido, clave_gemini=""):
     datos["coinciden"] = (datos["fuente"] == "QR + Gemini" and not diferencias)
     datos["diferencias"] = diferencias
     datos["aviso_lectura"] = crear_aviso_lectura(datos["fuente"], detalle)
+    if datos["fuente"] == "QR + Gemini":
+        avisar("✔ El QR y la IA coinciden" if datos["coinciden"]
+               else "⚠ El QR y la IA NO coinciden en: " + ", ".join(diferencias))
 
     # Revisar que el folio y los RFC tengan la forma correcta.
     if not re.fullmatch(FORMA_UUID, datos["uuid"]):

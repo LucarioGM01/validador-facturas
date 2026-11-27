@@ -45,8 +45,8 @@ with cuatro:
 
 # --- Opciones ---
 st.subheader("¿Qué quieres hacer?", icon=":material/apps:")
-opciones = st.grid(4, min_column_width=160, gap="medium")
-for clave in ["cargar", "resultados", "historial", "reporte"]:
+opciones = st.grid(5, min_column_width=160, gap="medium")
+for clave in ["cargar", "en_vivo", "resultados", "historial", "reporte"]:
     with opciones.cell():
         interfaz.tarjeta_opcion(clave)
 

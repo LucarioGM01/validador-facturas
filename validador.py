@@ -109,7 +109,19 @@ def consultar_estado(uuid, ruta_csv=RUTA_CSV):
 # 4. Validación
 # ---------------------------------------------------------------
 
-def validar_factura(conexion, contenido_xml, usuario, nombre_archivo="", datos=None):
+def avisar_paso(al_paso, texto):
+    """Si alguien quiere enterarse de cada paso (el bot de Telegram, la página
+    web), le avisa. Si nadie escucha (al_paso es None), no hace nada.
+
+    Convención: un texto que empieza con «⏳» es un paso EN CURSO; el siguiente
+    texto lo reemplaza con el resultado (✔ bien, ✖ mal, ⚠ ojo).
+    """
+    if al_paso is not None:
+        al_paso(texto)
+
+
+def validar_factura(conexion, contenido_xml, usuario, nombre_archivo="", datos=None,
+                    al_paso=None):
     """Valida UNA factura de principio a fin y regresa un diccionario con el resultado.
 
     - conexion:       la base de datos (base_datos.conectar())
@@ -118,6 +130,9 @@ def validar_factura(conexion, contenido_xml, usuario, nombre_archivo="", datos=N
     - nombre_archivo: solo para mostrarlo en pantalla
     - datos:          (opcional) los datos YA leídos, por ejemplo de la foto de
                       una factura con lector_imagen.py. Si vienen, no se lee XML.
+    - al_paso:        (opcional) función que recibe un texto por cada paso que se
+                      hace («Consultando el SAT…», «✖ Cancelada el 05/11/2026»...).
+                      Así se puede ver la validación EN VIVO y saber por qué falló.
 
     El orden es: leer el XML -> ¿ya estaba validada? (RN-07) -> consultar el SAT
     simulado -> revisar el receptor (RN-05) -> guardar el comprobante (RN-06).
@@ -142,17 +157,22 @@ def validar_factura(conexion, contenido_xml, usuario, nombre_archivo="", datos=N
 
     # --- Paso 1: leer el XML (lector_xml.py), si los datos no vienen ya leídos ---
     if datos is None:
+        avisar_paso(al_paso, "⏳ Leyendo el archivo XML…")
         try:
             datos = leer_factura(contenido_xml)
-        except FacturaInvalida:
+        except FacturaInvalida as error:
+            avisar_paso(al_paso, f"✖ No se pudo leer el XML: {error.detalle or MENSAJE_INVALIDA}")
             resultado["estado"] = ARCHIVO_INVALIDO
-            resultado["mensaje"] = (f"{MENSAJE_INVALIDA}. Revisa que sea el archivo .xml "
-                                    "que mandó el proveedor (no el PDF).")
+            resultado["mensaje"] = (f"{MENSAJE_INVALIDA} ({error.detalle}). Revisa que sea el "
+                                    "archivo .xml que mandó el proveedor (no el PDF).")
             resultado["segundos"] = _segundos_desde(inicio)
             return resultado  # no se guarda nada: ni siquiera sabemos el folio
+        avisar_paso(al_paso, f"✔ XML leído: {datos['nombre_emisor']} ({datos['rfc_emisor']}) "
+                             f"· ${datos['total']:,.2f}")
     resultado.update(datos)  # copia uuid, RFC, nombres, total y fecha
 
     # --- Paso 2: RN-07, ¿ya se había validado como vigente? ---
+    avisar_paso(al_paso, f"⏳ Comprobando el folio {datos['uuid']}…")
     anterior = base_datos.obtener_factura(conexion, datos["uuid"])
     if anterior is not None and anterior["estado"] == VIGENTE:
         resultado["estado"] = VIGENTE
@@ -160,11 +180,34 @@ def validar_factura(conexion, contenido_xml, usuario, nombre_archivo="", datos=N
         resultado["mensaje"] = (
             f"Ya validada el {formatear_fecha_hora(anterior['ultima_validacion'])}."
         )
+        avisar_paso(al_paso, "✔ El folio ya estaba validado como vigente: no se vuelve a validar. "
+                             + resultado["mensaje"])
         resultado["segundos"] = _segundos_desde(inicio)
         return resultado  # no se vuelve a validar ni a guardar
+    if anterior is None:
+        avisar_paso(al_paso, "✔ Folio nuevo: no se había validado antes")
+    else:
+        avisar_paso(al_paso, f"⚠ El folio ya estaba registrado como «{anterior['estado']}»: "
+                             "se revisa de nuevo")
 
     # --- Paso 3: consultar el SAT simulado y aplicar las reglas ---
+    avisar_paso(al_paso, "⏳ Consultando el folio en el SAT (simulado)…")
     sat = consultar_estado(datos["uuid"])
+    if sat["estado"] == CANCELADA:
+        avisar_paso(al_paso, f"✖ El SAT lo marca como CANCELADA el "
+                             f"{formatear_fecha(sat['fecha_cancelacion'])}")
+    elif sat["estado"] == VIGENTE:
+        avisar_paso(al_paso, "✔ El SAT lo marca como Vigente")
+    else:
+        avisar_paso(al_paso, "✖ El folio NO aparece en el SAT")
+
+    if sat["estado"] == VIGENTE:  # solo se revisa el receptor si está vigente
+        avisar_paso(al_paso, "⏳ Revisando que el receptor sea del Tecnológico…")
+        if datos["rfc_receptor"] in RFC_RECEPTORES_VALIDOS:
+            avisar_paso(al_paso, f"✔ Receptor {datos['rfc_receptor']} correcto")
+        else:
+            avisar_paso(al_paso, f"✖ El receptor es {datos['rfc_receptor']} y debería ser "
+                                 f"{' o '.join(RFC_RECEPTORES_VALIDOS)}")
 
     if sat["estado"] == CANCELADA:
         # RN-02: guardar fecha de cancelación y avisar al jefe. Si el aviso ya le
@@ -206,15 +249,18 @@ def validar_factura(conexion, contenido_xml, usuario, nombre_archivo="", datos=N
     # confiar en los datos: aunque salga vigente, no se paga hasta revisarla.
     if resultado["aviso_lectura"]:
         resultado["puede_pagarse"] = False
+        avisar_paso(al_paso, f"⚠ Lectura de la imagen dudosa: {resultado['aviso_lectura']}")
         if resultado["estado"] == VIGENTE:
             resultado["mensaje"] = ("Vigente en el SAT, pero NO la pagues todavía: primero "
                                     "revisa la lectura de la imagen.")
 
     # --- Paso 4: guardar la factura y el comprobante (RN-03 y RN-06) ---
+    avisar_paso(al_paso, "⏳ Guardando el comprobante…")
     resultado["segundos"] = _segundos_desde(inicio)
     resultado["id_validacion"] = base_datos.guardar_validacion(
         conexion, resultado, usuario, resultado["segundos"]
     )
+    avisar_paso(al_paso, f"✔ Comprobante No. {resultado['id_validacion']} guardado")
     return resultado
 
 
