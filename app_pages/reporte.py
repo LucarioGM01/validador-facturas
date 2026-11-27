@@ -21,7 +21,6 @@ r = base_datos.resumen_mes(conexion, mes)
 conexion.close()
 if r["validaciones"] == 0:
     with st.container(border=True, horizontal_alignment="center"):
-        st.image(interfaz.svg("reporte"), width=200, alt="")
         st.markdown("**No hay validaciones en ese mes.**", text_alignment="center")
     st.stop()
 

@@ -13,7 +13,7 @@ interfaz.encabezado(
 subir, prueba = st.columns([3, 2], gap="medium")
 
 with subir:
-    with st.container(border=True, key="tarjeta_cargar", height="stretch"):
+    with st.container(border=True, height="stretch"):
         st.subheader("Sube tus facturas", icon=":material/upload_file:")
         st.caption(
             "Arrastra aquí los archivos .xml o imágenes (.png, .jpg, .jpeg) o haz clic para buscarlos."
@@ -41,7 +41,7 @@ with subir:
             st.switch_page(interfaz.PAG_RESULTADOS)
 
 with prueba:
-    with st.container(border=True, key="tarjeta_prueba", height="stretch"):
+    with st.container(border=True, height="stretch"):
         st.subheader("Facturas de prueba", icon=":material/science:")
         st.caption(
             "10 facturas inventadas para la demostración: 7 vigentes, 2 canceladas "

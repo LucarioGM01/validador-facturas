@@ -22,7 +22,6 @@ interfaz.encabezado("resultados", "Resultados",
 resultados = st.session_state.get("resultados", [])
 if not resultados:
     with st.container(border=True, horizontal_alignment="center"):
-        st.image(interfaz.svg("cargar"), width=200, alt="")
         st.markdown("**Todavía no hay resultados.** Valida algunas facturas para verlas aquí.",
                     text_alignment="center")
         st.page_link(interfaz.PAG_CARGAR, label="Ir a cargar facturas", icon=":material/upload_file:")
@@ -117,7 +116,7 @@ tabla = pd.DataFrame([{
     "Archivo": r["archivo"],
 } for r in resultados])
 st.dataframe(
-    interfaz.estilo_estados(tabla), hide_index=True,
+    tabla, hide_index=True,
     column_config={
         "Total": st.column_config.NumberColumn(format="dollar"),
         "Detalle": st.column_config.TextColumn(width="large"),
@@ -135,8 +134,7 @@ for numero, r in enumerate(resultados):
         id_validacion = base_datos.obtener_id_ultima_validacion(conexion, r["uuid"])
     validacion = base_datos.obtener_validacion(conexion, id_validacion) if id_validacion else None
 
-    with st.container(border=True, horizontal=True, vertical_alignment="center",
-                      key=f"fila_{numero}"):
+    with st.container(border=True, horizontal=True, vertical_alignment="center"):
         st.markdown(f"**{interfaz.folio_corto(r['uuid'])}** · {r['nombre_emisor'] or r['archivo']}",
                     width="stretch")
         interfaz.insignia_estado(r["estado"], r["es_repetida"])

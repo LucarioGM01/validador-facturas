@@ -33,7 +33,6 @@ st.set_page_config(
     page_icon=":material/receipt_long:",
     layout="wide",
 )
-interfaz.aplicar_estilos()
 
 
 @st.cache_resource

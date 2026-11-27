@@ -128,7 +128,7 @@ En la nube la base de datos se borra cuando la app se reinicia o se duerme
 
 ```
 ├── app.py                     → arranca la página web y arma el menú
-├── interfaz.py                → colores, logos, encabezados y tarjetas que comparten las pantallas
+├── interfaz.py                → logos, encabezados y tarjetas que comparten las pantallas (solo Python)
 ├── app_pages/                 → una pantalla por archivo
 │   ├── acceso.py              → inicio de sesión
 │   ├── inicio.py              → resumen del mes y accesos rápidos
@@ -137,11 +137,10 @@ En la nube la base de datos se borra cuando la app se reinicia o se duerme
 │   ├── resultados.py          → resultados y comprobantes
 │   ├── historial.py           → búsqueda y seguimiento de canceladas (jefe)
 │   └── reporte.py             → reporte del mes
-├── ilustraciones/             → dibujos de colores (SVG) de cada opción
 ├── lector_xml.py              → lee los datos de un XML de factura
 ├── validador.py               → consulta el estado y aplica las reglas de negocio
 ├── base_datos.py              → guarda y consulta en SQLite
-├── comprobante.py             → arma el comprobante digital descargable (HTML)
+├── comprobante.py             → dibuja el comprobante digital descargable (imagen PNG)
 ├── avisos.py                  → arma y manda los avisos y el registro a Telegram
 ├── procesar_lote.py           → valida un grupo de facturas (lo usan la app y el bot)
 ├── bot_telegram.py            → bot de Telegram: botones, carpeta vigilada y mensaje en vivo

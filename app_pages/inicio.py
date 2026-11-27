@@ -17,8 +17,7 @@ interfaz.encabezado("inicio", f"Hola, {primer_nombre}",
 canceladas = base_datos.buscar_facturas(conexion, estado=CANCELADA)
 pendientes = [f for f in canceladas if not f["uuid_reemplazo"]]
 if usuario["rol"] == "jefe" and pendientes:
-    with st.container(border=True, key="cancelada_aviso", horizontal=True,
-                      vertical_alignment="center"):
+    with st.container(border=True, horizontal=True, vertical_alignment="center"):
         st.markdown(f"**Tienes {len(pendientes)} factura(s) cancelada(s) sin factura nueva.** "
                     "Revisa el seguimiento para pedirla al proveedor.", width="stretch")
         st.page_link(interfaz.PAG_HISTORIAL, label="Ir al seguimiento",

@@ -7,10 +7,8 @@ import interfaz
 
 _, centro, _ = st.columns([1, 1.3, 1])
 with centro:
-    with st.container(border=True, key="acceso"):
-        interfaz.mostrar_logos(clave="logos_acceso", tamano=96)
-        with st.container(horizontal_alignment="center"):
-            st.image(interfaz.svg("bienvenida"), width=210, alt="")
+    with st.container(border=True):
+        interfaz.mostrar_logos(tamano=96)
         st.title("Validador de facturas", text_alignment="center")
         st.markdown("Valida en segundos las facturas de los proveedores, sin teclear ni imprimir.",
                     text_alignment="center")

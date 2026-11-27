@@ -34,7 +34,7 @@ if usuario["rol"] == "jefe":
 
     for numero, factura in enumerate(canceladas):
         uuid = factura["uuid"]
-        with st.container(border=True, key=f"cancelada_{numero}"):
+        with st.container(border=True):
             with st.container(horizontal=True, vertical_alignment="center"):
                 st.markdown(f"**{interfaz.folio_corto(uuid)} · {factura['nombre_emisor']}**",
                             width="stretch")
@@ -98,7 +98,7 @@ tabla = pd.DataFrame([{
     "RFC proveedor": f["rfc_emisor"],
     "Folio fiscal completo": f["uuid"],
 } for f in facturas])
-st.dataframe(interfaz.estilo_estados(tabla), hide_index=True,
+st.dataframe(tabla, hide_index=True,
              column_config={"Total": st.column_config.NumberColumn(format="dollar")},
              alt="Tabla del historial de facturas validadas")
 

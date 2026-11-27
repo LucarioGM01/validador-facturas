@@ -1,13 +1,16 @@
 """
 interfaz.py
 -----------
-Piezas de la interfaz que comparten todas las pantallas: colores, logos,
-ilustraciones, encabezados, tarjetas y las acciones de los botones.
+Piezas de la interfaz que comparten todas las pantallas: logos, encabezados,
+tarjetas y las acciones de los botones.
+
+Todo está hecho con Python y los componentes nativos de Streamlit (sin HTML,
+CSS ni imágenes SVG). Los colores del programa salen del tema de
+.streamlit/config.toml.
 
 Las pantallas están en la carpeta app_pages/ y app.py arma el menú.
 """
 
-import html
 from pathlib import Path
 
 import streamlit as st
@@ -32,7 +35,6 @@ from validador import (
 # ---------------------------------------------------------------
 
 CARPETA = Path(__file__).parent
-CARPETA_ILUSTRACIONES = CARPETA / "ilustraciones"
 CARPETA_PRUEBA = CARPETA / "facturas_prueba"
 
 PAG_ACCESO = "app_pages/acceso.py"
@@ -43,49 +45,44 @@ PAG_RESULTADOS = "app_pages/resultados.py"
 PAG_HISTORIAL = "app_pages/historial.py"
 PAG_REPORTE = "app_pages/reporte.py"
 
-# Cada opción tiene su color, su ícono y su ilustración, para reconocerla de
-# un vistazo. Los íconos son "Material Symbols": :material/nombre_del_icono:
+# Cada opción tiene su ícono, para reconocerla de un vistazo. Los íconos son
+# "Material Symbols": :material/nombre_del_icono:
 OPCIONES = {
     "inicio": {
         "titulo": "Inicio", "icono": ":material/home:", "pagina": PAG_INICIO,
-        "color": "#8A5434", "fondo": "#F6EDE4", "ilustracion": "bienvenida",
         "descripcion": "Resumen del mes y accesos rápidos.",
     },
     "cargar": {
         "titulo": "Cargar facturas", "icono": ":material/upload_file:", "pagina": PAG_CARGAR,
-        "color": "#2F5DA8", "fondo": "#E6EEF9", "ilustracion": "cargar",
         "descripcion": "Sube los XML de los proveedores o usa las facturas de prueba.",
     },
     "en_vivo": {
         "titulo": "En vivo", "icono": ":material/sensors:", "pagina": PAG_EN_VIVO,
-        "color": "#0E7C86", "fondo": "#E1F2F3", "ilustracion": "resultados",
         "descripcion": "Mira en tiempo real cómo llegan y se validan las facturas.",
     },
     "resultados": {
         "titulo": "Resultados", "icono": ":material/fact_check:", "pagina": PAG_RESULTADOS,
-        "color": "#2E8B57", "fondo": "#E5F3EA", "ilustracion": "resultados",
         "descripcion": "Mira cuáles están vigentes, canceladas o con receptor incorrecto.",
     },
     "historial": {
         "titulo": "Historial", "icono": ":material/folder_open:", "pagina": PAG_HISTORIAL,
-        "color": "#6B4FA0", "fondo": "#EEE8F6", "ilustracion": "historial",
         "descripcion": "Busca facturas validadas y da seguimiento a las canceladas.",
     },
     "reporte": {
         "titulo": "Reporte del mes", "icono": ":material/monitoring:", "pagina": PAG_REPORTE,
-        "color": "#B5652E", "fondo": "#F8E9DC", "ilustracion": "reporte",
         "descripcion": "Totales, hojas ahorradas y comparación con el proceso anterior.",
     },
 }
 
-# Colores de las tarjetas de datos: (color fuerte, fondo suave).
+# Colores de las tarjetas de datos: nombre en español -> color de texto de
+# Streamlit (se escribe :color[texto] en Markdown). "primary" es el cobre del tema.
 COLORES = {
-    "azul": ("#2F5DA8", "#E6EEF9"),
-    "verde": ("#2E8B57", "#E5F3EA"),
-    "rojo": ("#C0392B", "#FBE6E3"),
-    "naranja": ("#D9822B", "#FDEBD8"),
-    "violeta": ("#6B4FA0", "#EEE8F6"),
-    "cobre": ("#8A5434", "#F6EDE4"),
+    "azul": "blue",
+    "verde": "green",
+    "rojo": "red",
+    "naranja": "orange",
+    "violeta": "violet",
+    "cobre": "primary",
 }
 
 # Cómo se ve cada estado: color de la insignia (st.badge) e ícono.
@@ -98,13 +95,6 @@ ESTADOS_VISUAL = {
     ARCHIVO_INVALIDO: ("gray", ":material/block:"),
 }
 
-# Colores de la columna Estado en las tablas: (texto, fondo).
-COLORES_TABLA = {
-    VIGENTE: ("#1E6B34", "#E5F3EA"),
-    CANCELADA: ("#9B2318", "#FBE6E3"),
-    RECEPTOR_INCORRECTO: ("#7A4A00", "#FFF1CC"),
-}
-
 MINUTOS_ANTES = 3  # promedio del proceso manual (de 1 a 5 minutos por factura)
 
 MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio",
@@ -112,106 +102,52 @@ MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio",
 
 
 # ---------------------------------------------------------------
-# 2. Estilos (CSS)
+# 2. Logos, encabezados y tarjetas
 # ---------------------------------------------------------------
 
-def aplicar_estilos():
-    """Agrega los detalles de color que el tema (config.toml) no cubre.
-
-    Cada caja a la que le damos color tiene un key=, y Streamlit le pone la
-    clase .st-key-<key>; el CSS usa esa clase para pintarla.
-    """
-    reglas = [
-        # Tarjeta blanca con los dos logos
-        ".st-key-logos, .st-key-logos_acceso { background: #FFFFFF; border-radius: 14px;"
-        " padding: 12px 14px; }",
-        # Tarjeta del inicio de sesión
-        ".st-key-acceso { background: #FFFFFF; box-shadow: 0 12px 32px rgba(43,46,51,0.10); }",
-        # Tarjeta de las facturas de prueba (cobre)
-        ".st-key-tarjeta_prueba { background: #FFFFFF; border-top: 6px solid #CD9472 !important; }",
-        # Filas de comprobantes y facturas canceladas
-        "[class*='st-key-fila_'] { background: #FFFFFF; }",
-        "[class*='st-key-cancelada_'] { background: #FFFFFF; border-left: 6px solid #C0392B !important; }",
-    ]
-    for clave, opcion in OPCIONES.items():
-        # Encabezado de cada pantalla: degradado suave con su color
-        reglas.append(
-            f".st-key-encabezado_{clave} {{ background: linear-gradient(115deg, {opcion['fondo']} 0%,"
-            f" #FFFFFF 80%); border-left: 6px solid {opcion['color']} !important; }}"
-        )
-        # Tarjeta de cada opción: franja de color arriba
-        reglas.append(
-            f".st-key-tarjeta_{clave} {{ background: #FFFFFF; border-top: 6px solid"
-            f" {opcion['color']} !important; }}"
-        )
-    for nombre, (fuerte, suave) in COLORES.items():
-        # Tarjetas de datos: fondo suave y franja de color a la izquierda
-        reglas.append(
-            f"[class*='st-key-dato_{nombre}_'] {{ background: {suave};"
-            f" border-left: 6px solid {fuerte} !important; }}"
-        )
-    st.html(f"<style>{' '.join(reglas)}</style>")
-
-
-# ---------------------------------------------------------------
-# 3. Logos, ilustraciones, encabezados y tarjetas
-# ---------------------------------------------------------------
-
-def svg(nombre):
-    """Texto de una ilustración de la carpeta ilustraciones/ (formato SVG)."""
-    return (CARPETA_ILUSTRACIONES / f"{nombre}.svg").read_text(encoding="utf-8")
-
-
-def mostrar_logos(clave="logos", tamano=60):
-    """Tarjeta blanca con el logo de Soluciones Digitales y el del Tecnológico.
+def mostrar_logos(tamano=60):
+    """Logo de Soluciones Digitales y logo del Tecnológico, uno junto al otro.
 
     Usa una fila horizontal (no columnas) para que en pantallas angostas los
     logos no se estiren: cada uno conserva su tamaño.
     """
-    with st.container(key=clave, horizontal=True, vertical_alignment="center",
+    with st.container(horizontal=True, vertical_alignment="center",
                       horizontal_alignment="distribute"):
         ruta_marca = buscar_logo(NOMBRES_LOGO_MARCA)
         if ruta_marca:
             st.image(str(ruta_marca), width=tamano * 2, alt="Logo de Soluciones Digitales")
         else:
             # Mientras no exista logo.png, se escribe el nombre de la marca.
-            st.html(
-                '<div style="font-family: Georgia, serif; color: #8A5434; font-size: 1.15rem;'
-                ' line-height: 1.15;">Soluciones<br>Digitales</div>'
-                '<div style="font-style: italic; color: #6B6259; font-size: 0.68rem;'
-                ' margin-top: 4px;">«No hay trabajo tan difícil<br>que no se pueda solucionar»</div>',
-                width="content",
-            )
+            st.markdown("**Soluciones Digitales**  \n"
+                        "*«No hay trabajo tan difícil que no se pueda solucionar»*", width="content")
         ruta_tec = buscar_logo(NOMBRES_LOGO_TEC)
         if ruta_tec:
             st.image(str(ruta_tec), width=tamano, alt=f"Logo del {NOMBRE_CLIENTE}")
 
 
 def encabezado(clave, titulo, descripcion):
-    """Encabezado de color de cada pantalla, con su ícono y su ilustración."""
-    opcion = OPCIONES[clave]
-    with st.container(border=True, key=f"encabezado_{clave}"):
-        texto, dibujo = st.columns([3, 1], vertical_alignment="center")
-        with texto:
-            st.title(titulo, icon=opcion["icono"])
-            st.markdown(descripcion)
-        with dibujo:
-            st.image(svg(opcion["ilustracion"]), width=180, alt="")
+    """Encabezado de cada pantalla: título con su ícono y una descripción."""
+    with st.container(border=True):
+        st.title(titulo, icon=OPCIONES[clave]["icono"])
+        st.markdown(descripcion)
 
 
 def tarjeta_dato(color, clave, etiqueta, valor, icono, nota=None):
-    """Tarjeta de color con un número importante (por ejemplo: «Vigentes: 7»)."""
-    with st.container(border=True, key=f"dato_{color}_{clave}", height="stretch"):
+    """Tarjeta con un número importante (por ejemplo: «Vigentes: 7»).
+
+    `color` es uno de los nombres de COLORES y pinta la nota de abajo;
+    `clave` solo sirve para que Streamlit distinga una tarjeta de otra.
+    """
+    with st.container(border=True, key=f"dato_{clave}", height="stretch"):
         st.metric(etiqueta, valor, icon=icono)
         if nota:
-            st.caption(nota)
+            st.caption(f":{COLORES[color]}[{nota}]")
 
 
 def tarjeta_opcion(clave):
-    """Tarjeta de una opción del menú: ilustración, título, descripción y botón."""
+    """Tarjeta de una opción del menú: título, descripción y botón."""
     opcion = OPCIONES[clave]
     with st.container(border=True, key=f"tarjeta_{clave}", height="stretch"):
-        st.image(svg(opcion["ilustracion"]), width="stretch", alt="")
         st.markdown(f"#### {opcion['icono']} {opcion['titulo']}")
         st.caption(opcion["descripcion"])
         st.space("stretch")  # empuja el botón hasta abajo de la tarjeta
@@ -225,17 +161,6 @@ def insignia_estado(estado, repetida=False):
     st.badge(texto, icon=icono, color=color)
 
 
-def estilo_estados(tabla):
-    """Pinta la columna Estado de una tabla con el color de cada estado."""
-    def color(valor):
-        for estado, etiqueta in ETIQUETAS.items():
-            if str(valor).startswith(etiqueta):
-                texto, fondo = COLORES_TABLA.get(estado, ("#4A4F57", "#EEEEEE"))
-                return f"color: {texto}; background-color: {fondo}; font-weight: 700"
-        return ""
-    return tabla.style.map(color, subset=["Estado"])
-
-
 def mostrar_mensaje():
     """Muestra (una sola vez) el mensaje que dejó algún botón en session_state."""
     if "mensaje" in st.session_state:
@@ -247,7 +172,7 @@ def mostrar_mensaje():
 
 
 # ---------------------------------------------------------------
-# 4. Ayudantes de formato
+# 3. Ayudantes de formato
 # ---------------------------------------------------------------
 
 def dinero(cantidad):
@@ -281,13 +206,8 @@ def nombre_mes(mes):
     return f"{MESES[int(numero) - 1]} {anio}"
 
 
-def texto_seguro(texto):
-    """Escapa un texto para meterlo en HTML sin riesgo."""
-    return html.escape(str(texto))
-
-
 # ---------------------------------------------------------------
-# 5. Barra lateral
+# 4. Barra lateral
 # ---------------------------------------------------------------
 
 def barra_lateral(usuario):
@@ -323,7 +243,7 @@ def barra_lateral(usuario):
 
 
 # ---------------------------------------------------------------
-# 6. Validar facturas
+# 5. Validar facturas
 # ---------------------------------------------------------------
 
 def credenciales_telegram():
@@ -374,7 +294,7 @@ def validar_de_prueba():
 
 
 # ---------------------------------------------------------------
-# 7. Acciones de los botones (callbacks)
+# 6. Acciones de los botones (callbacks)
 # ---------------------------------------------------------------
 # Un "callback" es una función que Streamlit ejecuta al hacer clic en un
 # botón, ANTES de volver a dibujar la página.
