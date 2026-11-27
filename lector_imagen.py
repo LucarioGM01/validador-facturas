@@ -184,6 +184,43 @@ def leer_con_gemini(contenido, clave):
 # 5. Juntar las dos lecturas
 # ---------------------------------------------------------------
 
+# Nombres para mostrar de cada dato que se compara.
+NOMBRES_DATOS = {
+    "uuid": "folio fiscal",
+    "rfc_emisor": "RFC del emisor",
+    "rfc_receptor": "RFC del receptor",
+    "total": "total",
+}
+
+
+def crear_aviso_lectura(fuente, detalle):
+    """Texto de aviso cuando la lectura de la imagen NO es confiable, o "" si lo es.
+
+    - fuente:  "QR + Gemini", "solo QR" o "solo Gemini"
+    - detalle: lista de (dato, valor del QR, valor leído por la IA) que no coinciden
+
+    Casos:
+      * QR y Gemini no coinciden -> puede ser un error de la IA... o una factura
+        impresa ALTERADA (el texto dice una cosa y el QR otra). Hay que revisarla.
+      * Solo Gemini (no se pudo leer el QR) -> nada confirma lo que leyó la IA.
+      * Solo QR, o QR y Gemini coinciden -> confiable: no hay aviso.
+    """
+    if fuente == "solo Gemini":
+        return ("No se pudo leer el código QR: los datos los leyó solo la IA y nada los "
+                "confirma. Compara el folio, los RFC y el total con la factura antes de pagar.")
+    if not detalle:
+        return ""
+
+    partes = []
+    for clave, valor_qr, valor_ia in detalle:
+        if clave == "total":
+            valor_qr, valor_ia = f"${valor_qr:,.2f}", f"${valor_ia:,.2f}"
+        partes.append(f"{NOMBRES_DATOS[clave]} (QR: {valor_qr or 'vacío'}; "
+                      f"impreso según la IA: {valor_ia or 'vacío'})")
+    return ("El código QR y lo impreso en la factura NO coinciden en: " + "; ".join(partes)
+            + ". Se usaron los datos del QR. Revisa la factura antes de pagar: puede ser "
+              "un error de lectura o una factura alterada.")
+
 def leer_factura_imagen(contenido, clave_gemini=""):
     """Lee la imagen de una factura y regresa sus datos.
 
@@ -191,6 +228,7 @@ def leer_factura_imagen(contenido, clave_gemini=""):
       fuente      -> "QR + Gemini", "solo QR" o "solo Gemini"
       coinciden   -> True si el QR y Gemini leyeron lo mismo
       diferencias -> lista de los datos que no coincidieron
+      aviso_lectura -> texto si hay que revisar la lectura a mano, o "" si es confiable
     Si no se pudo leer nada, lanza FacturaInvalida.
     """
     del_qr = leer_qr(contenido)
@@ -223,13 +261,17 @@ def leer_factura_imagen(contenido, clave_gemini=""):
             datos["fecha"] = ""  # la fecha no se leyó bien: se deja vacía
 
     # Comparar lo que leyó cada "ojo" (solo si los dos leyeron algo).
+    # detalle guarda (dato, lo que dice el QR, lo que leyó la IA) para el aviso.
     diferencias = []
+    detalle = []
     if del_qr is not None and de_ia is not None:
         for clave in ["uuid", "rfc_emisor", "rfc_receptor"]:
             if del_qr[clave] != datos[clave]:
                 diferencias.append(clave)
+                detalle.append((clave, del_qr[clave], datos[clave]))
         if abs(del_qr["total"] - datos["total"]) > 0.01:
             diferencias.append("total")
+            detalle.append(("total", del_qr["total"], datos["total"]))
 
     # El QR manda en folio, RFC y total porque es exacto.
     if del_qr is not None:
@@ -245,6 +287,7 @@ def leer_factura_imagen(contenido, clave_gemini=""):
         datos["fuente"] = "solo Gemini"
     datos["coinciden"] = (datos["fuente"] == "QR + Gemini" and not diferencias)
     datos["diferencias"] = diferencias
+    datos["aviso_lectura"] = crear_aviso_lectura(datos["fuente"], detalle)
 
     # Revisar que el folio y los RFC tengan la forma correcta.
     if not re.fullmatch(FORMA_UUID, datos["uuid"]):

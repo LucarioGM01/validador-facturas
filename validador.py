@@ -137,6 +137,7 @@ def validar_factura(conexion, contenido_xml, usuario, nombre_archivo="", datos=N
         "es_repetida": False,    # RN-07
         "segundos": 0.0,
         "id_validacion": None,   # número del comprobante guardado
+        "aviso_lectura": "",     # si la factura vino en imagen y su lectura es dudosa
     }
 
     # --- Paso 1: leer el XML (lector_xml.py), si los datos no vienen ya leídos ---
@@ -199,6 +200,15 @@ def validar_factura(conexion, contenido_xml, usuario, nombre_archivo="", datos=N
         resultado["estado"] = NO_ENCONTRADA
         resultado["mensaje"] = ("El folio no aparece en el SAT (simulado). Revisa que el "
                                 "XML sea el correcto o pide al proveedor que lo verifique.")
+
+    # --- Paso 3b: lectura dudosa de una imagen (lector_imagen.py) ---
+    # Si el QR y la IA no coinciden, o solo la IA pudo leerla, no se puede
+    # confiar en los datos: aunque salga vigente, no se paga hasta revisarla.
+    if resultado["aviso_lectura"]:
+        resultado["puede_pagarse"] = False
+        if resultado["estado"] == VIGENTE:
+            resultado["mensaje"] = ("Vigente en el SAT, pero NO la pagues todavía: primero "
+                                    "revisa la lectura de la imagen.")
 
     # --- Paso 4: guardar la factura y el comprobante (RN-03 y RN-06) ---
     resultado["segundos"] = _segundos_desde(inicio)

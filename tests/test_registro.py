@@ -72,6 +72,16 @@ class TestMensajeRegistro(unittest.TestCase):
         self.assertIn("1 de 1 REQUIEREN ATENCIÓN", mensaje)
         self.assertIn("Archivo foto.jpg", mensaje)
 
+    def test_lectura_dudosa_requiere_atencion(self):
+        """Una vigente leída de una imagen dudosa va en «Requieren atención» con su aviso."""
+        resultado = validar([1])[0]
+        resultado["aviso_lectura"] = "El código QR y lo impreso NO coinciden en: total."
+        mensaje = avisos.crear_mensaje_registro([resultado], "auxiliar", FECHA)
+        self.assertIn("1 de 1 REQUIEREN ATENCIÓN", mensaje)
+        self.assertIn("🔍 Lectura de imagen por revisar: 1", mensaje)
+        self.assertIn("🔍 El código QR y lo impreso NO coinciden en: total.", mensaje)
+        self.assertNotIn("Correctas", mensaje)
+
     def test_repetidas_cuentan_como_correctas(self):
         """RN-07: una factura ya validada antes no es una incidencia."""
         conexion = base_datos.conectar(":memory:")

@@ -127,6 +127,53 @@ class TestLeerFacturaImagen(unittest.TestCase):
         datos = leer_factura_imagen(png_de(3), "")
         self.assertEqual(datos["fuente"], "solo QR")
         self.assertEqual(datos["uuid"], folio_fiscal(3))
+        self.assertEqual(datos["aviso_lectura"], "")  # el QR es exacto: no hay aviso
+
+
+class TestAvisoLectura(unittest.TestCase):
+
+    @mock.patch("lector_imagen.requests.post")
+    def test_sin_aviso_cuando_coinciden(self, post):
+        post.return_value = respuesta_gemini(LECTURA_FACTURA_3)
+        self.assertEqual(leer_factura_imagen(png_de(3), CLAVE_FALSA)["aviso_lectura"], "")
+
+    @mock.patch("lector_imagen.requests.post")
+    def test_aviso_dice_que_dato_no_coincide_y_ambos_valores(self, post):
+        """El aviso dice qué dato no coincide, qué dice el QR y qué está impreso."""
+        post.return_value = respuesta_gemini({**LECTURA_FACTURA_3, "total": 8480.0,
+                                              "rfc_emisor": "CPR010101CD9"})
+        aviso = leer_factura_imagen(png_de(3), CLAVE_FALSA)["aviso_lectura"]
+        for dato in ["NO coinciden", "RFC del emisor (QR: CPR010101CD2; impreso según la IA: CPR010101CD9)",
+                     "total (QR: $3,480.00; impreso según la IA: $8,480.00)", "alterada"]:
+            with self.subTest(dato=dato):
+                self.assertIn(dato, aviso)
+
+    @mock.patch("lector_imagen.leer_qr", return_value=None)
+    @mock.patch("lector_imagen.requests.post")
+    def test_aviso_cuando_solo_lee_la_ia(self, post, _leer_qr):
+        """Si el QR no se ve, nada confirma lo que leyó la IA: hay que revisarla."""
+        post.return_value = respuesta_gemini(LECTURA_FACTURA_3)
+        datos = leer_factura_imagen(png_de(3), CLAVE_FALSA)
+        self.assertEqual(datos["fuente"], "solo Gemini")
+        self.assertIn("No se pudo leer el código QR", datos["aviso_lectura"])
+
+    def test_vigente_con_lectura_dudosa_no_se_puede_pagar(self):
+        """Aunque salga vigente en el SAT, con lectura dudosa no se paga todavía."""
+        datos = leer_factura_imagen(png_de(1), "")
+        datos["aviso_lectura"] = "El código QR y lo impreso NO coinciden en: total."
+        conexion = base_datos.conectar(":memory:")
+        resultado = validar_factura(conexion, None, "auxiliar", datos=datos)
+        conexion.close()
+        self.assertEqual(resultado["estado"], "Vigente")
+        self.assertFalse(resultado["puede_pagarse"])
+        self.assertIn("NO la pagues", resultado["mensaje"])
+
+    def test_xml_no_trae_aviso(self):
+        conexion = base_datos.conectar(":memory:")
+        resultado = validar_factura(conexion, crear_xml(FACTURAS_PRUEBA[0]), "auxiliar")
+        conexion.close()
+        self.assertEqual(resultado["aviso_lectura"], "")
+        self.assertTrue(resultado["puede_pagarse"])
 
     def test_imagen_que_no_se_puede_leer(self):
         """Sin QR y sin IA no hay forma de leerla: sale el mensaje de factura inválida."""

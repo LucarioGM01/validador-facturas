@@ -41,6 +41,7 @@ def resultado_imagen_invalida(nombre, error):
         "es_repetida": False,
         "segundos": 0.0,
         "id_validacion": None,
+        "aviso_lectura": "",
     }
 
 
