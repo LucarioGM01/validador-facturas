@@ -106,6 +106,8 @@ def leer_qr(contenido):
     El QR de una factura trae una dirección como:
     https://verificacfdi...?id=FOLIO&re=RFC_EMISOR&rr=RFC_RECEPTOR&tt=TOTAL
     """
+    if not contenido or not tipo_de_imagen(contenido):
+        return None  # vacío o no es PNG/JPG
     # Convertir los bytes en una imagen que OpenCV entienda.
     arreglo = numpy.frombuffer(contenido, dtype=numpy.uint8)
     imagen = cv2.imdecode(arreglo, cv2.IMREAD_COLOR)
