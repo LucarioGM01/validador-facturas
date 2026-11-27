@@ -114,7 +114,16 @@ def _renglon_factura(numero, resultado):
     else:
         datos = f"Archivo {resultado['archivo'] or '(sin nombre)'}"  # no se pudo leer
     repetida = " (ya validada antes)" if resultado["es_repetida"] else ""
-    return f"{numero}. {ETIQUETAS[resultado['estado']]}{repetida} · {datos}\n   {resultado['mensaje']}"
+    renglon = f"{numero}. {ETIQUETAS[resultado['estado']]}{repetida} · {datos}\n   {resultado['mensaje']}"
+    if resultado.get("aviso_lectura"):
+        renglon += f"\n   🔍 {resultado['aviso_lectura']}"
+    return renglon
+
+
+def requiere_atencion(resultado):
+    """True si la factura NO se puede pagar tal cual: un estado con incidencia,
+    o una imagen cuya lectura hay que revisar a mano."""
+    return resultado["estado"] in ESTADOS_CON_INCIDENCIA or bool(resultado.get("aviso_lectura"))
 
 
 def crear_mensaje_registro(resultados, usuario, fecha_hora, origen="app web"):
@@ -128,8 +137,8 @@ def crear_mensaje_registro(resultados, usuario, fecha_hora, origen="app web"):
     - fecha_hora: cuándo, por ejemplo "2026-11-18T21:30:00"
     - origen:     desde dónde se validó ("app web" o "bot de Telegram")
     """
-    con_incidencia = [r for r in resultados if r["estado"] in ESTADOS_CON_INCIDENCIA]
-    correctas = [r for r in resultados if r["estado"] not in ESTADOS_CON_INCIDENCIA]
+    con_incidencia = [r for r in resultados if requiere_atencion(r)]
+    correctas = [r for r in resultados if not requiere_atencion(r)]
 
     if not resultados:
         titulo = "ℹ️ Registro de validación: no se recibió ninguna factura"
@@ -157,6 +166,9 @@ def crear_mensaje_registro(resultados, usuario, fecha_hora, origen="app web"):
             renglones.append(f"  {ETIQUETAS[estado]}: {cantidad}{nota}")
         elif cantidad:
             renglones.append(f"  {ETIQUETAS[estado]}: {cantidad}")
+    por_revisar = sum(1 for r in resultados if r.get("aviso_lectura"))
+    if por_revisar:
+        renglones.append(f"  🔍 Lectura de imagen por revisar: {por_revisar}")
 
     if con_incidencia:
         renglones += ["", "Requieren atención:"]

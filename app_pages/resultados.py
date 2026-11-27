@@ -42,8 +42,12 @@ promedio = sum(tiempos) / len(tiempos) if tiempos else 0.0
 # --- Tarjetas del resumen ---
 uno, dos, tres, cuatro = st.columns(4)
 with uno:
+    vigentes_por_revisar = sum(1 for r in nuevas
+                               if r["estado"] == VIGENTE and r.get("aviso_lectura"))
     interfaz.tarjeta_dato("verde", "res_vigentes", "Vigentes", contar(VIGENTE),
-                          ":material/check_circle:", "Se pueden pagar")
+                          ":material/check_circle:",
+                          f"{vigentes_por_revisar} con lectura por revisar"
+                          if vigentes_por_revisar else "Se pueden pagar")
 with dos:
     interfaz.tarjeta_dato("rojo", "res_canceladas", "Canceladas", contar(CANCELADA),
                           ":material/cancel:", "Hay que pedir factura nueva")
@@ -62,6 +66,9 @@ if contar(NO_ENCONTRADA):
     otros.append(f"{contar(NO_ENCONTRADA)} no encontrada(s) en el SAT")
 if contar(ARCHIVO_INVALIDO):
     otros.append(f"{contar(ARCHIVO_INVALIDO)} archivo(s) inválido(s)")
+por_revisar = [r for r in resultados if r.get("aviso_lectura")]
+if por_revisar:
+    otros.append(f"{len(por_revisar)} imagen(es) con lectura por revisar")
 if otros:
     st.caption("Además: " + ", ".join(otros) + ".")
 
@@ -80,6 +87,16 @@ for r in resultados:
             icon=":material/notifications_active:",
         )
 
+# --- Avisos de lectura dudosa (QR e IA no coinciden, o solo leyó la IA) ---
+for r in por_revisar:
+    st.warning(
+        # En st.warning el signo $ abre fórmulas: se escribe como \$.
+        r["aviso_lectura"].replace("$", "\\$"),
+        title=f"Revisa la lectura de la factura {interfaz.folio_corto(r['uuid'])} "
+              f"({r['archivo']})",
+        icon=":material/policy:",
+    )
+
 # --- Registro enviado a Telegram ---
 registro = st.session_state.get("registro")
 if registro:
@@ -93,7 +110,8 @@ st.subheader("Detalle por factura", icon=":material/table_view:")
 tabla = pd.DataFrame([{
     "Folio": interfaz.folio_corto(r["uuid"]),
     "Proveedor": r["nombre_emisor"] or "—",
-    "Estado": ETIQUETAS[r["estado"]] + (" (ya validada)" if r["es_repetida"] else ""),
+    "Estado": (ETIQUETAS[r["estado"]] + (" (ya validada)" if r["es_repetida"] else "")
+               + (" · 🔍 revisar lectura" if r.get("aviso_lectura") else "")),
     "Total": r["total"] if r["uuid"] else None,
     "Detalle": r["mensaje"],
     "Archivo": r["archivo"],
