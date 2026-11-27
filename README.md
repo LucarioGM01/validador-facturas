@@ -9,12 +9,15 @@ La aplicación lee los archivos XML de las facturas, consulta su estado
 (Vigente o Cancelada) en una base **simulada**, guarda un comprobante digital
 de cada validación y avisa al jefe por Telegram cuando una factura sale cancelada.
 
+**¿Eres nuevo aquí?** Lee la [Guía de uso](GUIA_DE_USO.md): explica paso a paso cómo
+instalarlo y usarlo.
+
 **Importante:** todo el proyecto usa datos inventados. No contiene facturas,
 RFC ni nombres reales, y no se conecta al SAT.
 
 ## Requisitos
 
-- Python 3.10 o más reciente (marca «Add Python to PATH» al instalarlo)
+- Python 3.11 o más reciente (marca «Add Python to PATH» al instalarlo)
 - Visual Studio Code (u otro editor)
 - Conexión a internet (solo para instalar librerías y mandar avisos a Telegram)
 
